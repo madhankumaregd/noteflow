@@ -1873,6 +1873,24 @@ body.reading-mode .mobile-toggle {
 
 /* ---- RESPONSIVE ---- */
 @media (max-width: 768px) {
+  .btn-text {
+    display: none;
+  }
+  .btn-tool {
+    padding: 6px 8px;
+    gap: 0;
+  }
+  .btn-delete {
+    padding: 6px 8px;
+  }
+  .save-status {
+    padding: 0 4px;
+    font-size: 0;
+  }
+  .save-status .material-symbols-rounded {
+    font-size: 18px;
+  }
+  
   .sidebar {
     position: fixed;
     left: 0;
@@ -1941,6 +1959,67 @@ body.reading-mode .mobile-toggle {
 
   .editor-actions {
     gap: 6px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .ribbon {
+    padding: 4px;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .ribbon-group {
+    height: auto;
+  }
+  .sketch-divider {
+    display: none;
+  }
+  .ribbon-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+  }
+  .ribbon-label {
+    display: none; /* Hide labels like "Tools", "Brushes" to save vertical space */
+  }
+  .ribbon-btn-large {
+    padding: 4px 6px;
+  }
+  .ribbon-btn-large .material-symbols-rounded {
+    font-size: 20px;
+  }
+  .sketch-tool-btn, .sketch-shape-btn {
+    padding: 4px;
+  }
+  .sketch-tool-btn .material-symbols-rounded {
+    font-size: 18px;
+  }
+  .sketch-actions-right {
+    margin-top: 0;
+  }
+  
+  .mobile-color-toggle {
+    display: flex !important;
+  }
+  .color-popup-container {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bg-editor);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    z-index: 9999;
+    flex-wrap: wrap;
+    justify-content: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    width: 280px;
+    gap: 8px;
+  }
+  .color-popup-container.open {
+    display: flex;
   }
 }
 

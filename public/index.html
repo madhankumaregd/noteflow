@@ -396,24 +396,26 @@
           </div>
           <div class="editor-actions">
             <button class="btn-tool" id="addChecklistBtn" title="Add Checklist">
-              <span class="material-symbols-rounded">check_box</span> Checklist
+              <span class="material-symbols-rounded">check_box</span> <span class="btn-text">Checklist</span>
             </button>
             <button class="btn-tool" id="checklistSettingsBtn" title="Checklist Settings">
               <span class="material-symbols-rounded">settings</span>
             </button>
             <button class="btn-tool" id="sketchModeBtn" title="Draw Sketch">
-              <span class="material-symbols-rounded">draw</span> Sketch
+              <span class="material-symbols-rounded">draw</span> <span class="btn-text">Sketch</span>
             </button>
             <button class="btn-tool btn-duplicate" id="duplicateNoteBtn" title="Duplicate this note">
-              <span class="material-symbols-rounded">content_copy</span> Duplicate
+              <span class="material-symbols-rounded">content_copy</span> <span class="btn-text">Duplicate</span>
             </button>
             <button class="btn-tool btn-export" id="exportNoteBtn" title="Export / Share">
-              <span class="material-symbols-rounded">download</span> Export
+              <span class="material-symbols-rounded">download</span> <span class="btn-text">Export</span>
             </button>
             <button class="btn-tool btn-reading-mode" id="readingModeBtn" title="Reading Mode">
-              <span class="material-symbols-rounded">menu_book</span> Read
+              <span class="material-symbols-rounded">menu_book</span> <span class="btn-text">Read</span>
             </button>
-            <span class="save-status" id="saveStatus">Saved</span>
+            <span class="save-status" id="saveStatus" title="Saved to Cloud">
+              <span class="material-symbols-rounded">cloud_done</span> <span class="btn-text">Saved</span>
+            </span>
             <span class="word-count" id="wordCount" title="Word count">0 words</span>
             <button class="btn-delete" id="deleteNoteBtn" title="Delete note">
               <span class="material-symbols-rounded" style="font-size:16px">delete</span> Delete
@@ -824,47 +826,53 @@
 
         <!-- Colors -->
         <div class="ribbon-group colors-group">
-          <div class="active-colors">
-            <div class="active-color-wrap active" id="color1Wrap" title="Color 1 (Foreground)">
-              <div class="active-color-box" id="color1Box" style="background-color: #e8b86d;"></div>
-              <span>Color 1</span>
-            </div>
-            <div class="active-color-wrap" id="color2Wrap" title="Color 2 (Background)">
-              <div class="active-color-box" id="color2Box" style="background-color: #1c1a18;"></div>
-              <span>Color 2</span>
-            </div>
-          </div>
+          <button id="mobileColorToggleBtn" class="sketch-tool-btn mobile-color-toggle" style="display:none;" title="Colors">
+            <span class="material-symbols-rounded">palette</span>
+          </button>
           
-          <div class="color-palette" id="colorPalette">
-            <!-- Preset Colors -->
-            <button class="color-swatch" style="background-color:#000000;" data-color="#000000"></button>
-            <button class="color-swatch" style="background-color:#7f7f7f;" data-color="#7f7f7f"></button>
-            <button class="color-swatch" style="background-color:#880015;" data-color="#880015"></button>
-            <button class="color-swatch" style="background-color:#ed1c24;" data-color="#ed1c24"></button>
-            <button class="color-swatch" style="background-color:#ff7f27;" data-color="#ff7f27"></button>
-            <button class="color-swatch" style="background-color:#fff200;" data-color="#fff200"></button>
-            <button class="color-swatch" style="background-color:#22b14c;" data-color="#22b14c"></button>
-            <button class="color-swatch" style="background-color:#00a2e8;" data-color="#00a2e8"></button>
-            <button class="color-swatch" style="background-color:#3f48cc;" data-color="#3f48cc"></button>
-            <button class="color-swatch" style="background-color:#a349a4;" data-color="#a349a4"></button>
+          <div class="color-popup-container" id="colorPopupContainer">
+            <div class="active-colors">
+              <div class="active-color-wrap active" id="color1Wrap" title="Color 1 (Foreground)">
+                <div class="active-color-box" id="color1Box" style="background-color: #e8b86d;"></div>
+                <span>Color 1</span>
+              </div>
+              <div class="active-color-wrap" id="color2Wrap" title="Color 2 (Background)">
+                <div class="active-color-box" id="color2Box" style="background-color: #1c1a18;"></div>
+                <span>Color 2</span>
+              </div>
+            </div>
             
-            <button class="color-swatch" style="background-color:#ffffff;" data-color="#ffffff"></button>
-            <button class="color-swatch" style="background-color:#c3c3c3;" data-color="#c3c3c3"></button>
-            <button class="color-swatch" style="background-color:#b97a57;" data-color="#b97a57"></button>
-            <button class="color-swatch" style="background-color:#ffaec9;" data-color="#ffaec9"></button>
-            <button class="color-swatch" style="background-color:#ffc90e;" data-color="#ffc90e"></button>
-            <button class="color-swatch" style="background-color:#efe4b0;" data-color="#efe4b0"></button>
-            <button class="color-swatch" style="background-color:#b5e61d;" data-color="#b5e61d"></button>
-            <button class="color-swatch" style="background-color:#99d9ea;" data-color="#99d9ea"></button>
-            <button class="color-swatch" style="background-color:#7092be;" data-color="#7092be"></button>
-            <button class="color-swatch" style="background-color:#c8bfe7;" data-color="#c8bfe7"></button>
+            <div class="color-palette" id="colorPalette">
+              <!-- Preset Colors -->
+              <button class="color-swatch" style="background-color:#000000;" data-color="#000000"></button>
+              <button class="color-swatch" style="background-color:#7f7f7f;" data-color="#7f7f7f"></button>
+              <button class="color-swatch" style="background-color:#880015;" data-color="#880015"></button>
+              <button class="color-swatch" style="background-color:#ed1c24;" data-color="#ed1c24"></button>
+              <button class="color-swatch" style="background-color:#ff7f27;" data-color="#ff7f27"></button>
+              <button class="color-swatch" style="background-color:#fff200;" data-color="#fff200"></button>
+              <button class="color-swatch" style="background-color:#22b14c;" data-color="#22b14c"></button>
+              <button class="color-swatch" style="background-color:#00a2e8;" data-color="#00a2e8"></button>
+              <button class="color-swatch" style="background-color:#3f48cc;" data-color="#3f48cc"></button>
+              <button class="color-swatch" style="background-color:#a349a4;" data-color="#a349a4"></button>
+              
+              <button class="color-swatch" style="background-color:#ffffff;" data-color="#ffffff"></button>
+              <button class="color-swatch" style="background-color:#c3c3c3;" data-color="#c3c3c3"></button>
+              <button class="color-swatch" style="background-color:#b97a57;" data-color="#b97a57"></button>
+              <button class="color-swatch" style="background-color:#ffaec9;" data-color="#ffaec9"></button>
+              <button class="color-swatch" style="background-color:#ffc90e;" data-color="#ffc90e"></button>
+              <button class="color-swatch" style="background-color:#efe4b0;" data-color="#efe4b0"></button>
+              <button class="color-swatch" style="background-color:#b5e61d;" data-color="#b5e61d"></button>
+              <button class="color-swatch" style="background-color:#99d9ea;" data-color="#99d9ea"></button>
+              <button class="color-swatch" style="background-color:#7092be;" data-color="#7092be"></button>
+              <button class="color-swatch" style="background-color:#c8bfe7;" data-color="#c8bfe7"></button>
+            </div>
+            
+            <label class="edit-colors-btn" title="Edit colors">
+              <span class="material-symbols-rounded" style="font-size:28px; background: -webkit-linear-gradient(top left, red, yellow, green, cyan, blue, magenta); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">palette</span>
+              <span>Edit<br/>colors</span>
+              <input type="color" id="sketchCustomColor" style="display:none;" />
+            </label>
           </div>
-          
-          <label class="edit-colors-btn" title="Edit colors">
-            <span class="material-symbols-rounded" style="font-size:28px; background: -webkit-linear-gradient(top left, red, yellow, green, cyan, blue, magenta); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">palette</span>
-            <span>Edit<br/>colors</span>
-            <input type="color" id="sketchCustomColor" style="display:none;" />
-          </label>
 
           <span class="ribbon-label">Colors</span>
         </div>
@@ -881,6 +889,17 @@
       </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="js/globals.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/notes.js"></script>
+    <script src="js/editor.js"></script>
+    <script src="js/table.js"></script>
+    <script src="js/reading.js"></script>
+    <script src="js/sketch.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/core.js"></script>
+    <script type="module" src="js/router.js"></script>
   </body>
 </html>
