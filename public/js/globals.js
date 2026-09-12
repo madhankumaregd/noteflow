@@ -224,6 +224,21 @@ const themeSettingBtn = document.getElementById("themeSettingBtn");
 const currentThemeLabel = document.getElementById("currentThemeLabel");
 const themePopupOverlay = document.getElementById("themePopupOverlay");
 const themePopupCloseBtn = document.getElementById("themePopupCloseBtn");
+const languageSettingBtn = document.getElementById("languageSettingBtn");
+const currentLanguageLabel = document.getElementById("currentLanguageLabel");
+const languageModalOverlay = document.getElementById("languageModalOverlay");
+const languageList = document.getElementById("languageList");
+const languageCloseBtn = document.getElementById("languageCloseBtn");
+
+const diaryTypeModalOverlay = document.getElementById("diaryTypeModalOverlay");
+const diaryTypeNew = document.getElementById("diaryTypeNew");
+const diaryTypeExisting = document.getElementById("diaryTypeExisting");
+const newDiaryGroup = document.getElementById("newDiaryGroup");
+const existingDiaryGroup = document.getElementById("existingDiaryGroup");
+const newDiaryNameInput = document.getElementById("newDiaryNameInput");
+const existingDiarySelect = document.getElementById("existingDiarySelect");
+const diaryCancelBtn = document.getElementById("diaryCancelBtn");
+const diaryProceedBtn = document.getElementById("diaryProceedBtn");
 
 const colorPickerSection = document.getElementById("colorPickerSection");
 const colorPickerCanvas = document.getElementById("colorPickerCanvas");
@@ -231,4 +246,5 @@ const colorHueSlider = document.getElementById("colorHueSlider");
 const colorHexInput = document.getElementById("colorHexInput");
 const colorPreviewSwatch = document.getElementById("colorPreviewSwatch");
 const colorHistory = document.getElementById("colorHistory");
+
 

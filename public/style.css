@@ -99,6 +99,23 @@ body.theme-custom {
   padding: 0;
 }
 
+
+/* ---- SCROLLBAR ---- */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-sidebar);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
 html,
 body {
   height: 100%;
@@ -146,6 +163,135 @@ body {
     opacity 0.35s ease;
 }
 
+
+/* ---- NEW NOTE DROPDOWN ---- */
+.new-note-dropdown-wrap {
+  position: relative;
+}
+
+.new-note-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  z-index: 100;
+  min-width: 200px;
+  overflow: hidden;
+  animation: dropdownFadeIn 0.15s ease;
+}
+
+@keyframes dropdownFadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.new-note-dropdown.open {
+  display: block;
+}
+
+.new-note-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.new-note-dropdown-item:hover {
+  background: var(--accent-glow);
+}
+
+.new-note-dropdown-item .material-symbols-rounded {
+  color: var(--accent);
+}
+
+/* ---- LANGUAGE TOGGLE ---- */
+.sidebar-lang-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 4px 16px 8px;
+  justify-content: center;
+}
+
+.lang-btn {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  letter-spacing: 0.5px;
+}
+
+.lang-btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+.lang-btn.active {
+  background: var(--accent);
+  color: #1a1200;
+  border-color: var(--accent);
+}
+
+/* ---- SCRIPT / SCREENPLAY MODE ---- */
+.script-mode {
+  font-family: 'Courier New', Courier, monospace !important;
+  line-height: 1.8;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.script-mode .script-heading {
+  text-align: center;
+  font-weight: bold;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin-bottom: 24px;
+}
+
+.script-mode .script-slug {
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 20px;
+  margin-bottom: 8px;
+}
+
+.script-mode .script-action {
+  margin-left: 0;
+  margin-bottom: 12px;
+}
+
+.script-mode .script-character {
+  text-align: center;
+  text-transform: uppercase;
+  font-weight: bold;
+  margin-top: 16px;
+  margin-bottom: 2px;
+}
+
+.script-mode .script-dialogue {
+  text-align: center;
+  margin-left: 15%;
+  margin-right: 15%;
+  margin-bottom: 12px;
+}
 /* ---- SIDEBAR PROFILE ---- */
 .sidebar-profile {
   margin-top: auto;
@@ -998,7 +1144,8 @@ body {
   border-radius: var(--radius-sm);
   padding: 14px 18px;
   margin: 12px 0;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  justify-content: center;
   font-size: 13px;
   line-height: 1.7;
   color: var(--accent);
@@ -1303,7 +1450,8 @@ body {
   background: #1c1a18;
   border-bottom: 1px solid var(--border-light);
   gap: 16px;
-  overflow-x: auto;
+  flex-wrap: wrap;
+  justify-content: center;
   user-select: none;
   flex-shrink: 0; /* Prevents toolbar from being squished by large canvas */
 }
@@ -1314,7 +1462,8 @@ body {
   align-items: center;
   justify-content: flex-start;
   padding: 0 8px;
-  height: 80px;
+  min-height: 80px;
+  height: auto;
   position: relative;
 }
 
@@ -1396,12 +1545,14 @@ body {
   margin: 8px 4px 0;
 }
 
-.colors-group {
+.color-popup-container {
+  display: flex;
   flex-direction: row;
   align-items: flex-start;
   gap: 12px;
-  padding-top: 6px;
 }
+
+
 
 .active-colors {
   display: flex;
@@ -1971,7 +2122,13 @@ body.reading-mode .mobile-toggle {
   }
   .ribbon-group {
     height: auto;
+    min-height: 0;
+    padding: 0 4px;
   }
+  .brush-label { display: none; }
+  .sketch-size-slider { margin-top: 0 !important; }
+  .sketch-action-btn { padding: 4px 8px; font-size: 11px; }
+
   .sketch-divider {
     display: none;
   }
@@ -3002,3 +3159,10 @@ body.reading-mode .mobile-toggle {
   transform: scale(1.01);
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
+
+
+
+
+
+
+

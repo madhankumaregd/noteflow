@@ -5,14 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Noteflow — Your Ideas, Organized</title>
     <meta name="description" content="Noteflow is a beautiful, distraction-free note-taking app with rich formatting, tagging, search, and themes — all stored securely in the cloud." />
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="/style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Merriweather:wght@400;700&family=Lora:wght@400;500;700&family=Source+Serif+4:wght@400;600&display=swap"
       rel="stylesheet"
     />
     <!-- Material Symbols for Word-like icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add_link,arrow_drop_down,arrow_right_alt,block,border_all,brush,change_history,check_box,check_circle,chevron_right,close,code_blocks,colorize,content_copy,delete,download,draw,edit,format_align_center,format_align_justify,format_align_left,format_align_right,format_bold,format_clear,format_color_fill,format_color_text,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_paint,format_quote,format_size,format_strikethrough,format_underlined,horizontal_rule,image,ink_eraser,lock,logout,menu,menu_book,palette,pause,person,play_arrow,print,radio_button_unchecked,rectangle,redo,schema,search,settings,share,star,stop,subscript,superscript,text_format,text_to_speech,undo,visibility,visibility_off,volume_up&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add_link,arrow_drop_down,arrow_right_alt,block,border_all,brush,change_history,check_box,check_circle,chevron_right,close,code_blocks,colorize,content_copy,delete,download,draw,edit,format_align_center,format_align_justify,format_align_left,format_align_right,format_bold,format_clear,format_color_fill,format_color_text,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_paint,format_quote,format_size,format_strikethrough,format_underlined,horizontal_rule,image,ink_eraser,lock,logout,menu,menu_book,palette,pause,person,play_arrow,print,radio_button_unchecked,rectangle,redo,schema,search,settings,share,star,stop,subscript,superscript,text_format,text_to_speech,undo,visibility,visibility_off,auto_stories,cloud_done,description,movie,notifications,music_note,more_horiz,volume_up&display=swap" />
   </head>
   <body class="theme-dark">
 
@@ -209,7 +209,55 @@
       </div>
     </div>
 
-    <!-- DISPLAY NAME EDIT MODAL -->
+        <!-- DIARY ENTRY MODAL -->
+    <div class="modal-overlay" id="diaryTypeModalOverlay">
+      <div class="modal theme-popup">
+        <div class="theme-popup-header">
+          <h3 data-i18n="templateDiary">Diary Entry</h3>
+        </div>
+        <div style="display:flex; gap:16px; margin: 16px 0;">
+          <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="diaryType" value="new" checked id="diaryTypeNew">
+            <span data-i18n="newDiary">New Diary</span>
+          </label>
+          <label style="cursor:pointer; display:flex; align-items:center; gap:8px;">
+            <input type="radio" name="diaryType" value="existing" id="diaryTypeExisting">
+            <span data-i18n="existingDiary">Existing Diary</span>
+          </label>
+        </div>
+        
+        <div id="newDiaryGroup">
+          <input type="text" id="newDiaryNameInput" class="title-input" style="width:100%; font-size:16px; border:1px solid var(--border); padding:8px;" placeholder="e.g. My Travel Journal" data-i18n-placeholder="diaryPromptPlaceholder">
+        </div>
+        
+        <div id="existingDiaryGroup" style="display:none; padding: 4px 0;">
+          <select id="existingDiarySelect" style="width:100%; background:var(--bg-card); color:var(--text-primary); border:1px solid var(--border); padding:10px 12px; border-radius:var(--radius-sm); font-size:14px; font-family:var(--font-body); appearance: auto;">
+          </select>
+        </div>
+
+        <div class="settings-actions" style="margin-top: 24px; justify-content: flex-end;">
+          <button class="btn-cancel" id="diaryCancelBtn" data-i18n="cancel">Cancel</button>
+          <button class="btn-confirm-table" id="diaryProceedBtn" data-i18n="proceed">Proceed</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LANGUAGE MODAL -->
+    <div class="modal-overlay" id="languageModalOverlay">
+      <div class="modal theme-popup">
+        <div class="theme-popup-header">
+          <h3 data-i18n="selectLanguage">Select Language</h3>
+        </div>
+        <div class="language-list" id="languageList" style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; max-height: 300px; overflow-y: auto; padding: 4px;">
+          <!-- Buttons dynamically injected via i18n.js -->
+        </div>
+        <div class="settings-actions" style="margin-top: 16px; justify-content: flex-end;">
+          <button class="btn-cancel" id="languageCloseBtn" data-i18n="close">Close</button>
+        </div>
+      </div>
+    </div>
+
+<!-- DISPLAY NAME EDIT MODAL -->
     <div class="modal-overlay" id="displayNameModalOverlay">
       <div class="modal theme-popup">
         <div class="theme-popup-header">
@@ -268,7 +316,23 @@
           <span class="logo-icon">✦</span>
           <span class="logo-text">Noteflow</span>
         </div>
-        <button class="new-note-btn" id="newNoteBtn">+ New Note</button>
+        <div class="new-note-dropdown-wrap">
+          <button class="new-note-btn" id="newNoteBtn" data-i18n="newNote">+ New Note</button>
+          <div class="new-note-dropdown" id="newNoteDropdown">
+            <button class="new-note-dropdown-item" data-template="blank">
+              <span class="material-symbols-rounded" style="font-size:18px">description</span>
+              <span data-i18n="templateBlank">Blank Note</span>
+            </button>
+            <button class="new-note-dropdown-item" data-template="diary">
+              <span class="material-symbols-rounded" style="font-size:18px">auto_stories</span>
+              <span data-i18n="templateDiary">Diary Entry</span>
+            </button>
+            <button class="new-note-dropdown-item" data-template="script">
+              <span class="material-symbols-rounded" style="font-size:18px">movie</span>
+              <span data-i18n="templateScript">Script / Screenplay</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="search-wrap">
@@ -278,17 +342,20 @@
           id="searchInput"
           class="search-input"
           placeholder="Search notes..."
+          data-i18n-placeholder="searchPlaceholder"
         />
       </div>
 
       <div class="tags-section">
-        <p class="section-label">TAGS</p>
+        <p class="section-label" data-i18n="tags">TAGS</p>
         <div class="tags-filter" id="tagsFilter">
           <button class="tag-pill active" data-tag="all">All</button>
         </div>
       </div>
 
       <div class="notes-list" id="notesList"></div>
+
+
 
       <!-- Profile Button at bottom of sidebar -->
       <div class="sidebar-profile" id="sidebarProfile">
@@ -306,9 +373,9 @@
     <main class="main" id="main">
       <div class="empty-state" id="emptyState">
         <div class="empty-icon">✦</div>
-        <h2>Select a note or create one</h2>
-        <p>Your thoughts deserve a beautiful home.</p>
-        <button class="new-note-btn-lg" id="newNoteBtnLg">
+        <h2 data-i18n="emptyTitle">Select a note or create one</h2>
+        <p data-i18n="emptySubtitle">Your thoughts deserve a beautiful home.</p>
+        <button class="new-note-btn-lg" id="newNoteBtnLg" data-i18n="emptyBtn">
           Create your first note
         </button>
       </div>
@@ -357,6 +424,15 @@
                   <span class="material-symbols-rounded" style="color:var(--text-muted)">chevron_right</span>
                 </div>
               </div>
+              <div class="setting-item" id="languageSettingBtn" style="cursor:pointer">
+                <div class="setting-info">
+                  <h4 data-i18n="language">Language</h4>
+                  <p id="currentLanguageLabel">English</p>
+                </div>
+                <div class="setting-control">
+                  <span class="material-symbols-rounded" style="color:var(--text-muted)">chevron_right</span>
+                </div>
+              </div>
 
               <div class="setting-item">
                 <div class="setting-info">
@@ -398,9 +474,6 @@
             <button class="btn-tool" id="addChecklistBtn" title="Add Checklist">
               <span class="material-symbols-rounded">check_box</span> <span class="btn-text">Checklist</span>
             </button>
-            <button class="btn-tool" id="checklistSettingsBtn" title="Checklist Settings">
-              <span class="material-symbols-rounded">settings</span>
-            </button>
             <button class="btn-tool" id="sketchModeBtn" title="Draw Sketch">
               <span class="material-symbols-rounded">draw</span> <span class="btn-text">Sketch</span>
             </button>
@@ -417,8 +490,8 @@
               <span class="material-symbols-rounded">cloud_done</span> <span class="btn-text">Saved</span>
             </span>
             <span class="word-count" id="wordCount" title="Word count">0 words</span>
-            <button class="btn-delete" id="deleteNoteBtn" title="Delete note">
-              <span class="material-symbols-rounded" style="font-size:16px">delete</span> Delete
+            <button class="btn-tool" id="checklistSettingsBtn" title="Note Settings">
+              <span class="material-symbols-rounded">settings</span>
             </button>
           </div>
         </div>
@@ -713,11 +786,11 @@
       </div>
     </div>
 
-    <!-- CHECKLIST SETTINGS MODAL -->
+    <!-- NOTE SETTINGS MODAL -->
     <div class="modal-overlay" id="checklistSettingsModalOverlay">
       <div class="modal link-modal">
-        <h3>Checklist Auto-Refresh</h3>
-        <p>Automatically uncheck all items on a schedule.</p>
+        <h3>Note Settings</h3>
+        <p>Manage checklist auto-refresh and other settings.</p>
         
         <div class="auth-field" style="margin-top: 12px;">
           <label for="checklistRefreshType" style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block;">Refresh Frequency</label>
@@ -746,8 +819,14 @@
           <input type="time" id="checklistRefreshTime" class="modal-input" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); color-scheme: dark;" />
         </div>
 
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+          <button class="btn-delete" id="deleteNoteBtn" style="width: 100%; justify-content: center; padding: 10px;" title="Delete note">
+            <span class="material-symbols-rounded" style="font-size:18px">delete</span> Delete Note
+          </button>
+        </div>
+
         <div class="modal-actions" style="margin-top: 20px;">
-          <button class="btn-cancel" id="cancelChecklistSettings">Cancel</button>
+          <button class="btn-cancel" id="cancelChecklistSettings">Close</button>
           <button class="btn-confirm-table" id="saveChecklistSettings">Save</button>
         </div>
       </div>
@@ -788,7 +867,7 @@
         <div class="ribbon-group" style="position:relative">
           <button class="sketch-tool-btn ribbon-btn-large" id="sketchBrushBtn" title="Brushes">
             <span class="material-symbols-rounded">brush</span>
-            <span style="font-size:12px; margin-top:4px;">Brushes <span class="material-symbols-rounded" style="font-size:12px">arrow_drop_down</span></span>
+            <span class="brush-label" style="font-size:12px; margin-top:4px;">Brushes <span class="material-symbols-rounded" style="font-size:12px">arrow_drop_down</span></span>
           </button>
           <!-- Brushes Dropdown (hidden by default) -->
           <div class="sketch-dropdown" id="sketchBrushDropdown" style="display:none">
@@ -818,7 +897,7 @@
 
         <!-- Size -->
         <div class="ribbon-group">
-           <input type="range" id="sketchSizeSlider" class="sketch-size-slider" min="1" max="50" value="3" title="Size" style="margin-top:10px" />
+           <input type="range" id="sketchSizeSlider" class="sketch-size-slider" min="1" max="50" value="3" title="Size" />
            <span class="ribbon-label">Size</span>
         </div>
 
@@ -889,17 +968,24 @@
       </div>
     </div>
 
-    <script src="js/globals.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/notes.js"></script>
-    <script src="js/editor.js"></script>
-    <script src="js/table.js"></script>
-    <script src="js/reading.js"></script>
-    <script src="js/sketch.js"></script>
-    <script src="js/export.js"></script>
-    <script src="js/core.js"></script>
-    <script type="module" src="js/router.js"></script>
+    <script src="/js/globals.js"></script>
+    <script src="/js/utils.js"></script>
+    <script src="/js/api.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/notes.js"></script>
+    <script src="/js/editor.js"></script>
+    <script src="/js/table.js"></script>
+    <script src="/js/reading.js"></script>
+    <script src="/js/sketch.js"></script>
+    <script src="/js/export.js"></script>
+    <script src="/js/i18n.js"></script>
+    <script src="/js/core.js"></script>
+    <script type="module" src="/js/router.js"></script>
   </body>
 </html>
+
+
+
+
+
+

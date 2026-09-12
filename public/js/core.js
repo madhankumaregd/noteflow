@@ -1,4 +1,4 @@
-/* =============================================
+﻿/* =============================================
    DISPLAY NAME EDIT LOGIC
    ============================================= */
 displayNameSettingBtn.addEventListener("click", () => {
@@ -218,18 +218,41 @@ function renderRecentColors() {
 /* =============================================
    ACTIONS
    ============================================= */
-async function createNote() {
+async function createNote(template = 'blank', diaryName = '') {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString(currentLang === 'es' ? 'es-ES' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const timeStr = now.toLocaleTimeString(currentLang === 'es' ? 'es-ES' : 'en-US', { hour: '2-digit', minute: '2-digit' });
+
+  let title = '';
+  let content = '';
+  let tags = [];
+  let settings = {};
+
+  if (template === 'diary') {
+    const name = diaryName || 'My Diary';
+    title = `${name} — ${dateStr}`;
+    content = `<p><strong>📅 ${dateStr}</strong> &nbsp; <em>${timeStr}</em></p><hr/><p><strong>${t('diaryReflectionHeading')}</strong></p><p><br/></p>`;
+    tags = [`📖 ${name}`];
+  } else if (template === 'script') {
+    title = 'Untitled Script';
+    content = `<div class="script-mode"><p class="script-heading">UNTITLED SCREENPLAY</p><p class="script-slug">INT. LOCATION - DAY</p><p class="script-action">Description of the scene.</p><p class="script-character">CHARACTER NAME</p><p class="script-dialogue">Dialogue goes here.</p></div>`;
+    settings.scriptMode = true;
+  }
+
   const note = {
     id: generateId(),
-    title: "",
-    content: "",
-    tags: [],
-    settings: {},
+    title,
+    content,
+    tags,
+    settings,
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
   notes.unshift(note);
   activeNoteId = note.id;
+  if (note.id) {
+    localStorage.setItem('lastActiveNoteId', note.id);
+  }
   render();
   noteTitleInput.focus();
 
@@ -440,8 +463,104 @@ confirmImage.addEventListener("click", () => {
 /* =============================================
    EVENT LISTENERS
    ============================================= */
-newNoteBtn.addEventListener("click", createNote);
-newNoteBtnLg.addEventListener("click", createNote);
+
+// New Note Dropdown
+const newNoteDropdown = document.getElementById('newNoteDropdown');
+let newNoteDropdownOpen = false;
+
+newNoteBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  newNoteDropdownOpen = !newNoteDropdownOpen;
+  newNoteDropdown.classList.toggle('open', newNoteDropdownOpen);
+});
+
+document.addEventListener('click', (e) => {
+  if (newNoteDropdownOpen && !e.target.closest('.new-note-dropdown-wrap')) {
+    newNoteDropdownOpen = false;
+    newNoteDropdown.classList.remove('open');
+  }
+});
+
+document.querySelectorAll('.new-note-dropdown-item').forEach(item => {
+  item.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const template = item.dataset.template;
+    newNoteDropdownOpen = false;
+    newNoteDropdown.classList.remove('open');
+
+    if (template === 'diary') {
+      const diaryTags = [];
+      notes.forEach(n => {
+        n.tags.forEach(tag => {
+          if (tag.startsWith('📖 ') && !diaryTags.includes(tag)) {
+            diaryTags.push(tag);
+          }
+        });
+      });
+
+      existingDiarySelect.innerHTML = '';
+      if (diaryTags.length > 0) {
+        diaryTags.forEach(tag => {
+          const opt = document.createElement('option');
+          opt.value = tag.replace('📖 ', '');
+          opt.textContent = tag.replace('📖 ', '');
+          existingDiarySelect.appendChild(opt);
+        });
+        diaryTypeExisting.disabled = false;
+        diaryTypeExisting.parentElement.style.opacity = 1;
+        diaryTypeExisting.checked = true;
+      } else {
+        diaryTypeExisting.disabled = true;
+        diaryTypeExisting.parentElement.style.opacity = 0.5;
+        diaryTypeNew.checked = true;
+      }
+      
+      diaryTypeNew.dispatchEvent(new Event('change'));
+      diaryTypeExisting.dispatchEvent(new Event('change'));
+      
+      newDiaryNameInput.value = '';
+      diaryTypeModalOverlay.classList.add('open');
+      
+    } else {
+      createNote(template);
+    }
+  });
+});
+
+newNoteBtnLg.addEventListener("click", () => createNote('blank'));
+// Diary Modal Logic
+diaryTypeNew.addEventListener('change', () => {
+  if (diaryTypeNew.checked) {
+    newDiaryGroup.style.display = 'block';
+    existingDiaryGroup.style.display = 'none';
+  }
+});
+diaryTypeExisting.addEventListener('change', () => {
+  if (diaryTypeExisting.checked) {
+    newDiaryGroup.style.display = 'none';
+    existingDiaryGroup.style.display = 'block';
+  }
+});
+diaryCancelBtn.addEventListener('click', () => {
+  diaryTypeModalOverlay.classList.remove('open');
+});
+diaryProceedBtn.addEventListener('click', () => {
+  const isNew = diaryTypeNew.checked;
+  let diaryName = isNew ? newDiaryNameInput.value.trim() : existingDiarySelect.value;
+  if (!diaryName) diaryName = 'My Diary';
+  
+  diaryTypeModalOverlay.classList.remove('open');
+  createNote('diary', diaryName);
+});
+
+// Language Modal Logic
+languageSettingBtn.addEventListener('click', () => {
+  languageModalOverlay.classList.add('open');
+});
+languageCloseBtn.addEventListener('click', () => {
+  languageModalOverlay.classList.remove('open');
+});
+
 
 noteTitleInput.addEventListener("input", autoSave);
 tagInput.addEventListener("input", autoSave);
@@ -690,6 +809,14 @@ modalOverlay.addEventListener("click", (e) => {
 
 mobileToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
 
+document.addEventListener("click", (e) => {
+  if (window.innerWidth <= 768 && sidebar.classList.contains("open")) {
+    if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
+      sidebar.classList.remove("open");
+    }
+  }
+});
+
 // Mobile Swipe Gestures for Sidebar
 let touchstartX = 0;
 let touchendX = 0;
@@ -738,4 +865,8 @@ document.addEventListener("keydown", (e) => {
    START
    ============================================= */
 initApp();
+
+
+
+
 
