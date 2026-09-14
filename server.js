@@ -83,7 +83,7 @@ async function initDb() {
     } catch (e) {
       // Column already exists
     }
-    
+
     // Add settings column if table was created previously without it
     try {
       await turso.execute(`ALTER TABLE notes ADD COLUMN settings TEXT`);
@@ -246,7 +246,7 @@ async function getUserId(req, res) {
         res.status(403).json({ error: 'Your account has been deactivated...Contact an administrator.', isDeactivated: true });
         return null;
       }
-    } catch(err) {
+    } catch (err) {
       console.error('Error checking user status:', err);
     }
   }
@@ -405,10 +405,10 @@ app.put('/api/auth/password', async (req, res) => {
   try {
     const userId = req.headers['x-user-id'];
     const { currentPassword, newPassword } = req.body;
-    
+
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Missing password fields' });
-    
+
     const passwordErr = validatePassword(newPassword);
     if (passwordErr) return res.status(400).json({ error: passwordErr });
 
@@ -416,20 +416,20 @@ app.put('/api/auth/password', async (req, res) => {
       sql: 'SELECT password_hash FROM users WHERE id = ? AND deleted_at IS NULL',
       args: [userId]
     });
-    
+
     if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    
+
     const user = result.rows[0];
     const valid = await bcrypt.compare(currentPassword, user.password_hash);
     if (!valid) return res.status(401).json({ error: 'Incorrect current password' });
-    
+
     const newHash = await bcrypt.hash(newPassword, 10);
-    
+
     await turso.execute({
       sql: 'UPDATE users SET password_hash = ? WHERE id = ?',
       args: [newHash, userId]
     });
-    
+
     res.json({ success: true });
   } catch (err) {
     console.error('Password change error:', err);
@@ -629,7 +629,7 @@ async function requireAdmin(req, res, next) {
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized: Missing admin token' });
   }
-  
+
   if (!turso) {
     return res.status(500).json({ error: 'Database not connected' });
   }
@@ -1196,7 +1196,7 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Notes App running on http://localhost:${PORT}`);
   console.log(`🔧 Admin Panel at http://localhost:${PORT}/note-manager`);
 });

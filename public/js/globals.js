@@ -113,8 +113,12 @@ const sketchBrushBtn = document.getElementById("sketchBrushBtn");
 const sketchBrushDropdown = document.getElementById("sketchBrushDropdown");
 const sketchBrushItems = document.querySelectorAll(".sketch-dropdown-item[data-brush]");
 
-const sketchSizeSlider = document.getElementById("sketchSizeSlider");
-const sketchSizeSelect = document.getElementById("sketchSizeSelect");
+const sketchSizeSliderDesktop = document.getElementById("sketchSizeSliderDesktop");
+const sketchOpacitySliderDesktop = document.getElementById("sketchOpacitySliderDesktop");
+const sketchSlidersBtn = document.getElementById("sketchSlidersBtn");
+const sketchSlidersDropdown = document.getElementById("sketchSlidersDropdown");
+const sketchSizeSliderMobile = document.getElementById("sketchSizeSliderMobile");
+const sketchOpacitySliderMobile = document.getElementById("sketchOpacitySliderMobile");
 
 const color1Wrap = document.getElementById("color1Wrap");
 const color2Wrap = document.getElementById("color2Wrap");
@@ -130,6 +134,12 @@ const sketchDoneBtn = document.getElementById("sketchDoneBtn");
 const sketchContextMenu = document.getElementById("sketchContextMenu");
 const sketchContextEdit = document.getElementById("sketchContextEdit");
 const sketchContextDelete = document.getElementById("sketchContextDelete");
+const searchNoteBtn = document.getElementById("searchNoteBtn");
+const inNoteSearchBar = document.getElementById("inNoteSearchBar");
+const inNoteSearchInput = document.getElementById("inNoteSearchInput");
+const inNoteSearchPrev = document.getElementById("inNoteSearchPrev");
+const inNoteSearchNext = document.getElementById("inNoteSearchNext");
+const inNoteSearchClose = document.getElementById("inNoteSearchClose");
 const readingModeBtn = document.getElementById("readingModeBtn");
 const exitReadingBtn = document.getElementById("exitReadingBtn");
 const readingBar = document.getElementById("readingBar");
@@ -249,4 +259,8 @@ const colorHexInput = document.getElementById("colorHexInput");
 const colorPreviewSwatch = document.getElementById("colorPreviewSwatch");
 const colorHistory = document.getElementById("colorHistory");
 
+
+
+const autoScrollSpeedInput = document.getElementById('autoScrollSpeedInput');
+const autoScrollSpeedDisplay = document.getElementById('autoScrollSpeedDisplay');
 

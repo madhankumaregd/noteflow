@@ -36,6 +36,7 @@ function toggleReadingMode() {
 readingModeBtn.addEventListener("click", () => {
   if (activeNoteId) {
     if (isReadingMode) {
+      window.exitReadingMode();
       window.Router.navigate(`/notes`);
     } else {
       window.Router.navigate(`/notes/read`);
@@ -43,6 +44,7 @@ readingModeBtn.addEventListener("click", () => {
   }
 });
 exitReadingBtn.addEventListener("click", () => {
+  window.exitReadingMode();
   if (activeNoteId) window.Router.navigate(`/notes`);
   else window.Router.navigate(`/`);
 });
@@ -59,12 +61,16 @@ function toggleAutoScroll() {
   if (isAutoScrolling) {
     autoScrollBtn.classList.add("active");
     autoScrollIcon.textContent = "pause";
+    
+    const speed = parseInt(localStorage.getItem("autoScrollSpeed") || "2", 10);
+    const intervalMs = Math.max(5, Math.floor(60 / speed)); 
+    
     autoScrollInterval = setInterval(() => {
       noteContent.scrollTop += 1;
       if (noteContent.scrollTop + noteContent.clientHeight >= noteContent.scrollHeight - 1) {
         stopAutoScroll();
       }
-    }, 30);
+    }, intervalMs);
   } else {
     stopAutoScroll();
   }
@@ -136,4 +142,19 @@ function stopSpeaking() {
 speakBtn.addEventListener("click", toggleSpeak);
 window.addEventListener('beforeunload', () => synth.cancel());
 
+
+
+if (typeof autoScrollSpeedInput !== 'undefined' && autoScrollSpeedInput) {
+  autoScrollSpeedInput.value = localStorage.getItem('autoScrollSpeed') || '2';
+  if(typeof autoScrollSpeedDisplay !== 'undefined') autoScrollSpeedDisplay.textContent = autoScrollSpeedInput.value;
+  
+  autoScrollSpeedInput.addEventListener('input', (e) => {
+    localStorage.setItem('autoScrollSpeed', e.target.value);
+    if(typeof autoScrollSpeedDisplay !== 'undefined') autoScrollSpeedDisplay.textContent = e.target.value;
+    if (isAutoScrolling) {
+      stopAutoScroll();
+      toggleAutoScroll();
+    }
+  });
+}
 

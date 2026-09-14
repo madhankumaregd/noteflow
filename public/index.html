@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
     <title>Noteflow — Your Ideas, Organized</title>
     <meta name="description" content="Noteflow is a beautiful, distraction-free note-taking app with rich formatting, tagging, search, and themes — all stored securely in the cloud." />
     <link rel="stylesheet" href="/style.css" />
@@ -12,7 +12,7 @@
       rel="stylesheet"
     />
     <!-- Material Symbols for Word-like icons -->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add_link,arrow_drop_down,arrow_right_alt,block,border_all,brush,change_history,check_box,check_circle,chevron_right,close,code_blocks,colorize,content_copy,delete,download,draw,edit,format_align_center,format_align_justify,format_align_left,format_align_right,format_bold,format_clear,format_color_fill,format_color_text,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_paint,format_quote,format_size,format_strikethrough,format_underlined,horizontal_rule,image,ink_eraser,lock,logout,menu,menu_book,palette,pause,person,play_arrow,print,radio_button_unchecked,rectangle,redo,schema,search,settings,share,star,stop,subscript,superscript,text_format,text_to_speech,undo,visibility,visibility_off,auto_stories,cloud_done,description,movie,notifications,music_note,more_horiz,volume_up&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add_link,arrow_drop_down,arrow_right_alt,block,border_all,brush,change_history,check_box,check_circle,chevron_right,close,code_blocks,colorize,content_copy,delete,download,draw,edit,format_align_center,format_align_justify,format_align_left,format_align_right,format_bold,format_clear,format_color_fill,format_color_text,format_indent_decrease,format_indent_increase,format_italic,format_list_bulleted,format_list_numbered,format_paint,format_quote,format_size,format_strikethrough,format_underlined,horizontal_rule,image,ink_eraser,lock,logout,menu,menu_book,palette,pause,person,play_arrow,print,radio_button_unchecked,rectangle,redo,schema,search,settings,share,star,stop,subscript,superscript,text_format,text_to_speech,undo,visibility,visibility_off,auto_stories,cloud_done,description,movie,notifications,music_note,more_horiz,volume_up,keyboard_arrow_up,keyboard_arrow_down&display=swap" />
   </head>
   <body class="theme-dark">
 
@@ -454,16 +454,13 @@
       <div class="editor-panel" id="editorPanel" style="display: none">
         <div class="editor-topbar">
           <div class="editor-meta">
-            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 12px;">
               <input
                 type="text"
                 id="noteTitleInput"
                 class="title-input"
                 placeholder="Note title..."
               />
-              <button class="mobile-settings-btn" id="mobileSettingsBtn" title="App Settings">
-                <span class="material-symbols-rounded">settings</span>
-              </button>
             </div>
             <div class="tag-input-row">
               <span class="tag-label">Tags:</span>
@@ -477,6 +474,9 @@
             </div>
           </div>
           <div class="editor-actions">
+            <button class="btn-tool" id="searchNoteBtn" title="Search in Note">
+              <span class="material-symbols-rounded">search</span> <span class="btn-text">Search</span>
+            </button>
             <button class="btn-tool" id="addChecklistBtn" title="Add Checklist">
               <span class="material-symbols-rounded">check_box</span> <span class="btn-text">Checklist</span>
             </button>
@@ -499,6 +499,16 @@
             <button class="btn-tool" id="checklistSettingsBtn" title="Note Settings">
               <span class="material-symbols-rounded">settings</span>
             </button>
+          </div>
+        </div>
+
+        <div class="in-note-search-bar" id="inNoteSearchBar" style="display: none;">
+          <span class="material-symbols-rounded">search</span>
+          <input type="text" id="inNoteSearchInput" placeholder="Find in note..." />
+          <div class="in-note-search-actions">
+            <button class="btn-tool" id="inNoteSearchPrev" title="Previous"><span class="material-symbols-rounded">keyboard_arrow_up</span></button>
+            <button class="btn-tool" id="inNoteSearchNext" title="Next"><span class="material-symbols-rounded">keyboard_arrow_down</span></button>
+            <button class="btn-tool" id="inNoteSearchClose" title="Close"><span class="material-symbols-rounded">close</span></button>
           </div>
         </div>
 
@@ -831,7 +841,16 @@
           </button>
         </div>
 
-        <div class="modal-actions" style="margin-top: 20px;">
+        <div class="auth-field" style="margin-top: 16px;">
+          <label for="autoScrollSpeedInput" style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px; display: block;">Auto-Scroll Speed (Reading Mode)</label>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="material-symbols-rounded" style="font-size: 18px; color: var(--text-muted);">speed</span>
+            <input type="range" id="autoScrollSpeedInput" min="1" max="10" value="2" style="flex: 1;" />
+            <span id="autoScrollSpeedDisplay" style="font-size: 12px; color: var(--text-muted); width: 24px; text-align: center;">2</span>
+          </div>
+        </div>
+
+        <div class="modal-actions" style="margin-top: 24px;">
           <button class="btn-cancel" id="cancelChecklistSettings">Close</button>
           <button class="btn-confirm-table" id="saveChecklistSettings">Save</button>
         </div>
@@ -869,17 +888,22 @@
 
         <div class="sketch-divider"></div>
         
-        <!-- Brushes (Simplified as a dropdown/select) -->
+        <!-- Brushes -->
         <div class="ribbon-group" style="position:relative">
           <button class="sketch-tool-btn ribbon-btn-large" id="sketchBrushBtn" title="Brushes">
             <span class="material-symbols-rounded">brush</span>
             <span class="brush-label" style="font-size:12px; margin-top:4px;">Brushes <span class="material-symbols-rounded" style="font-size:12px">arrow_drop_down</span></span>
           </button>
-          <!-- Brushes Dropdown (hidden by default) -->
           <div class="sketch-dropdown" id="sketchBrushDropdown" style="display:none">
-             <button class="sketch-dropdown-item active" data-brush="solid">Solid</button>
-             <button class="sketch-dropdown-item" data-brush="marker">Marker</button>
-             <button class="sketch-dropdown-item" data-brush="spray">Airbrush</button>
+             <button class="sketch-dropdown-item active" data-brush="brush"><span>Brush</span> <div class="brush-preview brush-preview-normal"></div></button>
+             <button class="sketch-dropdown-item" data-brush="calligraphy_brush"><span>Calligraphy brush</span> <div class="brush-preview brush-preview-cal-brush"></div></button>
+             <button class="sketch-dropdown-item" data-brush="calligraphy_pen"><span>Calligraphy pen</span> <div class="brush-preview brush-preview-cal-pen"></div></button>
+             <button class="sketch-dropdown-item" data-brush="airbrush"><span>Airbrush</span> <div class="brush-preview brush-preview-air"></div></button>
+             <button class="sketch-dropdown-item" data-brush="oil"><span>Oil brush</span> <div class="brush-preview brush-preview-oil"></div></button>
+             <button class="sketch-dropdown-item" data-brush="crayon"><span>Crayon</span> <div class="brush-preview brush-preview-crayon"></div></button>
+             <button class="sketch-dropdown-item" data-brush="marker"><span>Marker</span> <div class="brush-preview brush-preview-marker"></div></button>
+             <button class="sketch-dropdown-item" data-brush="pencil"><span>Natural pencil</span> <div class="brush-preview brush-preview-pencil"></div></button>
+             <button class="sketch-dropdown-item" data-brush="watercolour"><span>Watercolour brush</span> <div class="brush-preview brush-preview-water"></div></button>
           </div>
           <span class="ribbon-label" style="opacity:0">Brushes</span>
         </div>
@@ -901,21 +925,23 @@
 
         <div class="sketch-divider"></div>
 
-        <!-- Size -->
-        <div class="ribbon-group">
-           <input type="range" id="sketchSizeSlider" class="sketch-size-slider" min="1" max="50" value="3" title="Size" />
-           <select id="sketchSizeSelect" class="sketch-size-select" title="Size">
-             <option value="1">1px</option>
-             <option value="2">2px</option>
-             <option value="3" selected>3px</option>
-             <option value="5">5px</option>
-             <option value="8">8px</option>
-             <option value="12">12px</option>
-             <option value="20">20px</option>
-             <option value="35">35px</option>
-             <option value="50">50px</option>
-           </select>
-           <span class="ribbon-label">Size</span>
+        <!-- Size and Opacity (Mobile Dropdown) -->
+        <div class="ribbon-group" id="sketchMobileSlidersGroup">
+           <button class="sketch-tool-btn ribbon-btn-large" id="sketchSlidersBtn" title="Stroke Settings">
+             <span class="material-symbols-rounded">tune</span>
+             <span class="brush-label" style="font-size:12px; margin-top:4px;">Settings <span class="material-symbols-rounded" style="font-size:12px">arrow_drop_down</span></span>
+           </button>
+           <div class="sketch-dropdown mobile-sliders-dropdown" id="sketchSlidersDropdown" style="display:none">
+             <div class="mobile-slider-row">
+               <span class="material-symbols-rounded">line_weight</span>
+               <input type="range" id="sketchSizeSliderMobile" class="sketch-horizontal-slider" min="1" max="100" value="3" />
+             </div>
+             <div class="mobile-slider-row">
+               <span class="material-symbols-rounded">water_drop</span>
+               <input type="range" id="sketchOpacitySliderMobile" class="sketch-horizontal-slider" min="0" max="1" step="0.05" value="1" />
+             </div>
+           </div>
+           <span class="ribbon-label" style="opacity:0">Settings</span>
         </div>
 
         <div class="sketch-divider"></div>
@@ -927,17 +953,6 @@
           </button>
           
           <div class="color-popup-container" id="colorPopupContainer">
-            <div class="active-colors">
-              <div class="active-color-wrap active" id="color1Wrap" title="Color 1 (Foreground)">
-                <div class="active-color-box" id="color1Box" style="background-color: #e8b86d;"></div>
-                <span>Color 1</span>
-              </div>
-              <div class="active-color-wrap" id="color2Wrap" title="Color 2 (Background)">
-                <div class="active-color-box" id="color2Box" style="background-color: #1c1a18;"></div>
-                <span>Color 2</span>
-              </div>
-            </div>
-            
             <div class="color-palette" id="colorPalette">
               <!-- Preset Colors -->
               <button class="color-swatch" style="background-color:#000000;" data-color="#000000"></button>
@@ -961,6 +976,17 @@
               <button class="color-swatch" style="background-color:#99d9ea;" data-color="#99d9ea"></button>
               <button class="color-swatch" style="background-color:#7092be;" data-color="#7092be"></button>
               <button class="color-swatch" style="background-color:#c8bfe7;" data-color="#c8bfe7"></button>
+            </div>
+            
+            <div class="active-colors">
+              <div class="active-color-wrap active" id="color1Wrap" title="Color 1 (Foreground)">
+                <div class="active-color-box" id="color1Box" style="background-color: #e8b86d;"></div>
+                <span>Color 1</span>
+              </div>
+              <div class="active-color-wrap" id="color2Wrap" title="Color 2 (Background)">
+                <div class="active-color-box" id="color2Box" style="background-color: #1c1a18;"></div>
+                <span>Color 2</span>
+              </div>
             </div>
             
             <label class="edit-colors-btn" title="Edit colors">

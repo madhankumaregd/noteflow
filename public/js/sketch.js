@@ -11,6 +11,7 @@ let activeColorTarget = 1; // 1 or 2
 let color1 = '#e8b86d';
 let color2 = '#1c1a18';
 let sketchSize = 3;
+let sketchOpacity = 1;
 let lastX = 0;
 let lastY = 0;
 let startX = 0;
@@ -95,15 +96,28 @@ colorSwatches.forEach(btn => {
 
 sketchCustomColor.addEventListener('input', (e) => setColor(e.target.value));
 
-sketchSizeSlider.addEventListener('input', (e) => { 
-  sketchSize = parseInt(e.target.value); 
-  if (sketchSizeSelect) sketchSizeSelect.value = sketchSize;
-});
+const updateSize = (val) => {
+  sketchSize = parseInt(val);
+  if (sketchSizeSliderDesktop) sketchSizeSliderDesktop.value = sketchSize;
+  if (sketchSizeSliderMobile) sketchSizeSliderMobile.value = sketchSize;
+};
 
-if (sketchSizeSelect) {
-  sketchSizeSelect.addEventListener('change', (e) => {
-    sketchSize = parseInt(e.target.value);
-    if (sketchSizeSlider) sketchSizeSlider.value = sketchSize;
+const updateOpacity = (val) => {
+  sketchOpacity = parseFloat(val);
+  if (sketchOpacitySliderDesktop) sketchOpacitySliderDesktop.value = sketchOpacity;
+  if (sketchOpacitySliderMobile) sketchOpacitySliderMobile.value = sketchOpacity;
+};
+
+if (sketchSizeSliderDesktop) sketchSizeSliderDesktop.addEventListener('input', (e) => updateSize(e.target.value));
+if (sketchSizeSliderMobile) sketchSizeSliderMobile.addEventListener('input', (e) => updateSize(e.target.value));
+
+if (sketchOpacitySliderDesktop) sketchOpacitySliderDesktop.addEventListener('input', (e) => updateOpacity(e.target.value));
+if (sketchOpacitySliderMobile) sketchOpacitySliderMobile.addEventListener('input', (e) => updateOpacity(e.target.value));
+
+if (sketchSlidersBtn && sketchSlidersDropdown) {
+  sketchSlidersBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    sketchSlidersDropdown.style.display = sketchSlidersDropdown.style.display === 'block' ? 'none' : 'block';
   });
 }
 
@@ -115,6 +129,9 @@ sketchBrushBtn.addEventListener('click', (e) => {
 document.addEventListener('click', (e) => {
   if (!sketchBrushBtn.contains(e.target) && sketchBrushDropdown) {
     sketchBrushDropdown.style.display = 'none';
+  }
+  if (sketchSlidersBtn && sketchSlidersDropdown && !sketchSlidersBtn.contains(e.target) && !sketchSlidersDropdown.contains(e.target)) {
+    sketchSlidersDropdown.style.display = 'none';
   }
   const mobileColorToggleBtn = document.getElementById('mobileColorToggleBtn');
   const colorPopupContainer = document.getElementById('colorPopupContainer');
@@ -229,24 +246,142 @@ function drawSketch(e) {
     sketchCtx.lineTo(x, y);
     
     if (currentTool === 'eraser') {
+      sketchCtx.globalCompositeOperation = 'source-over';
+      sketchCtx.globalAlpha = 1.0;
       sketchCtx.strokeStyle = color2;
       sketchCtx.lineWidth = sketchSize * 2;
+      sketchCtx.lineCap = 'round';
+      sketchCtx.lineJoin = 'round';
+      sketchCtx.beginPath();
+      sketchCtx.moveTo(lastX, lastY);
+      sketchCtx.lineTo(x, y);
+      sketchCtx.stroke();
     } else {
+      sketchCtx.globalAlpha = sketchOpacity;
       sketchCtx.strokeStyle = color1;
+      sketchCtx.fillStyle = color1;
       sketchCtx.lineWidth = sketchSize;
       
-      // Simple brush effects
-      if (currentBrush === 'spray') {
-        for(let i=0; i<10; i++) {
-          const offsetX = x + (Math.random() * sketchSize * 2 - sketchSize);
-          const offsetY = y + (Math.random() * sketchSize * 2 - sketchSize);
-          sketchCtx.fillStyle = color1;
-          sketchCtx.fillRect(offsetX, offsetY, 1, 1);
+      const dx = x - lastX;
+      const dy = y - lastY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      
+      if (currentBrush === 'brush') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        sketchCtx.lineCap = 'round';
+        sketchCtx.lineJoin = 'round';
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(lastX, lastY);
+        sketchCtx.lineTo(x, y);
+        sketchCtx.stroke();
+      } 
+      else if (currentBrush === 'calligraphy_brush') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        const angle = Math.PI / 4;
+        const thickness = sketchSize;
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(lastX - Math.cos(angle)*thickness, lastY - Math.sin(angle)*thickness);
+        sketchCtx.lineTo(x - Math.cos(angle)*thickness, y - Math.sin(angle)*thickness);
+        sketchCtx.lineTo(x + Math.cos(angle)*thickness, y + Math.sin(angle)*thickness);
+        sketchCtx.lineTo(lastX + Math.cos(angle)*thickness, lastY + Math.sin(angle)*thickness);
+        sketchCtx.closePath();
+        sketchCtx.fill();
+      }
+      else if (currentBrush === 'calligraphy_pen') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        const angle = -Math.PI / 4;
+        const thickness = sketchSize * 1.5;
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(lastX - Math.cos(angle)*thickness/2, lastY - Math.sin(angle)*thickness/2);
+        sketchCtx.lineTo(x - Math.cos(angle)*thickness/2, y - Math.sin(angle)*thickness/2);
+        sketchCtx.lineTo(x + Math.cos(angle)*thickness/2, y + Math.sin(angle)*thickness/2);
+        sketchCtx.lineTo(lastX + Math.cos(angle)*thickness/2, lastY + Math.sin(angle)*thickness/2);
+        sketchCtx.closePath();
+        sketchCtx.fill();
+      }
+      else if (currentBrush === 'airbrush') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        const drops = sketchSize * 2;
+        for (let i = 0; i < drops; i++) {
+          const randX = x + (Math.random() * sketchSize * 2.5 - sketchSize * 1.25);
+          const randY = y + (Math.random() * sketchSize * 2.5 - sketchSize * 1.25);
+          sketchCtx.globalAlpha = sketchOpacity * Math.random() * 0.5;
+          sketchCtx.beginPath();
+          sketchCtx.arc(randX, randY, Math.random() * 1.5, 0, Math.PI * 2);
+          sketchCtx.fill();
         }
-        sketchCtx.stroke(); // keep main line thin or omit
+      }
+      else if (currentBrush === 'oil') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        sketchCtx.lineCap = 'round';
+        sketchCtx.lineJoin = 'round';
+        // Bristles
+        for (let i = 0; i < 4; i++) {
+          sketchCtx.beginPath();
+          sketchCtx.globalAlpha = sketchOpacity * (0.5 + Math.random()*0.5);
+          sketchCtx.lineWidth = sketchSize * 0.3;
+          const offset = (i - 1.5) * (sketchSize * 0.25);
+          sketchCtx.moveTo(lastX + offset, lastY + offset);
+          sketchCtx.lineTo(x + offset, y + offset);
+          sketchCtx.stroke();
+        }
+      }
+      else if (currentBrush === 'crayon') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < dist; i += 2) {
+          const curX = lastX + (dx * i) / dist;
+          const curY = lastY + (dy * i) / dist;
+          sketchCtx.globalAlpha = sketchOpacity * (0.3 + Math.random()*0.6);
+          sketchCtx.beginPath();
+          sketchCtx.arc(
+            curX + (Math.random() * sketchSize - sketchSize/2), 
+            curY + (Math.random() * sketchSize - sketchSize/2), 
+            Math.random() * sketchSize * 0.4, 0, Math.PI * 2
+          );
+          sketchCtx.fill();
+        }
+      }
+      else if (currentBrush === 'marker') {
+        sketchCtx.globalCompositeOperation = 'screen';
+        sketchCtx.globalAlpha = sketchOpacity * 0.5;
+        sketchCtx.lineCap = 'square';
+        sketchCtx.lineJoin = 'bevel';
+        sketchCtx.lineWidth = sketchSize * 1.5;
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(lastX, lastY);
+        sketchCtx.lineTo(x, y);
+        sketchCtx.stroke();
+      }
+      else if (currentBrush === 'pencil') {
+        sketchCtx.globalCompositeOperation = 'source-over';
+        sketchCtx.globalAlpha = sketchOpacity * 0.8;
+        sketchCtx.lineCap = 'round';
+        sketchCtx.lineJoin = 'round';
+        sketchCtx.lineWidth = sketchSize * 0.3;
+        for (let i = 0; i < dist; i += 1) {
+          const curX = lastX + (dx * i) / dist + (Math.random() - 0.5);
+          const curY = lastY + (dy * i) / dist + (Math.random() - 0.5);
+          sketchCtx.beginPath();
+          sketchCtx.arc(curX, curY, sketchCtx.lineWidth, 0, Math.PI * 2);
+          sketchCtx.fill();
+        }
+      }
+      else if (currentBrush === 'watercolour') {
+        sketchCtx.globalCompositeOperation = 'screen';
+        sketchCtx.globalAlpha = sketchOpacity * 0.15;
+        sketchCtx.lineCap = 'round';
+        sketchCtx.lineJoin = 'round';
+        sketchCtx.shadowBlur = sketchSize;
+        sketchCtx.shadowColor = color1;
+        sketchCtx.lineWidth = sketchSize * 1.2;
+        sketchCtx.beginPath();
+        sketchCtx.moveTo(lastX, lastY);
+        sketchCtx.lineTo(x, y);
+        sketchCtx.stroke();
+        // Reset shadow
+        sketchCtx.shadowBlur = 0;
       }
     }
-    sketchCtx.stroke();
   }
   
   lastX = x;

@@ -126,3 +126,80 @@ function setSaveStatus(state) {
 }
 
 
+
+// --- IN-NOTE SEARCH ---
+searchNoteBtn.addEventListener('click', () => {
+  if (inNoteSearchBar.style.display === 'flex') {
+    inNoteSearchBar.style.display = 'none';
+    window.getSelection().removeAllRanges();
+  } else {
+    inNoteSearchBar.style.display = 'flex';
+    inNoteSearchInput.focus();
+  }
+});
+
+inNoteSearchClose.addEventListener('click', () => {
+  inNoteSearchBar.style.display = 'none';
+  inNoteSearchInput.value = '';
+  window.getSelection().removeAllRanges();
+});
+
+function doInNoteSearch(backward = false) {
+  const query = inNoteSearchInput.value;
+  if (!query) return;
+  // window.find(aString, aCaseSensitive, aBackwards, aWrapAround)
+  const found = window.find(query, false, backward, false);
+  if (!found) {
+    if (typeof showToast === 'function') {
+      if (!noteContent.textContent.toLowerCase().includes(query.toLowerCase())) {
+        showToast("No results found for '" + query + "'");
+      } else {
+        showToast("No more results for '" + query + "'");
+      }
+    }
+    window.getSelection().removeAllRanges();
+  } else {
+    // We intentionally DO NOT refocus the input here.
+    // Focusing the input causes the browser to hide the selection highlight (blink).
+    // Instead, we capture Enter/Arrows globally below.
+  }
+}
+
+// Handle keydown on the input itself (e.g. initial search or while typing)
+inNoteSearchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    doInNoteSearch(e.shiftKey);
+  }
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    doInNoteSearch(false);
+  }
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    doInNoteSearch(true);
+  }
+  if (e.key === 'Escape') {
+    inNoteSearchClose.click();
+  }
+});
+
+// Handle keydown globally so that if focus moves to the note, Enter/Arrows still search!
+document.addEventListener('keydown', (e) => {
+  if (inNoteSearchBar.style.display === 'flex' && document.activeElement !== inNoteSearchInput) {
+    const query = inNoteSearchInput.value;
+    if (query && window.getSelection().toString().toLowerCase() === query.toLowerCase()) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        doInNoteSearch(e.shiftKey && e.key === 'Enter' ? true : false);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        doInNoteSearch(true);
+      }
+    }
+  }
+});
+
+inNoteSearchPrev.addEventListener('click', () => doInNoteSearch(true));
+inNoteSearchNext.addEventListener('click', () => doInNoteSearch(false));
+

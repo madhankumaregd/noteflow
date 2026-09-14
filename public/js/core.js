@@ -822,7 +822,7 @@ modalOverlay.addEventListener("click", (e) => {
 
 mobileToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
 
-document.addEventListener("click", (e) => {
+const closeSidebarOnOutsideInteraction = (e) => {
   if (window.innerWidth <= 768 && sidebar.classList.contains("open")) {
     if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
       sidebar.classList.remove("open");
@@ -830,7 +830,10 @@ document.addEventListener("click", (e) => {
       e.stopPropagation();
     }
   }
-}, true);
+};
+document.addEventListener("click", closeSidebarOnOutsideInteraction, true);
+document.addEventListener("pointerdown", closeSidebarOnOutsideInteraction, true);
+document.addEventListener("touchstart", closeSidebarOnOutsideInteraction, { capture: true, passive: false });
 
 // Mobile Swipe Gestures for Sidebar
 let touchstartX = 0;
