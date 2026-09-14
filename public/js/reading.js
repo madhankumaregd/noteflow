@@ -93,19 +93,25 @@ function toggleSpeak() {
   } else {
     let parsedContent = "";
     // Parse note content to add pauses for checklists
+    // Parse note content to add pauses for checklists and block elements
     const tempDiv = document.createElement("div");
     tempDiv.innerHTML = noteContent.innerHTML;
     
     // Replace checkboxes with text equivalents so TTS reads them correctly with pauses
     const checkboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
     checkboxes.forEach(cb => {
+      // Check the original element in the DOM to see if it's checked, or fallback to attribute
       const isChecked = cb.checked || cb.hasAttribute('checked');
       const textNode = document.createTextNode(isChecked ? "Completed task: " : "Task: ");
       cb.parentNode.replaceChild(textNode, cb);
     });
     
-    // Extract text, ensuring block elements add newlines (which TTS engines interpret as pauses)
-    parsedContent = tempDiv.innerText;
+    // Convert block elements (div, p, br) into newlines so TTS pauses correctly
+    tempDiv.innerHTML = tempDiv.innerHTML.replace(/<br\s*\/?>/gi, "\n")
+                                         .replace(/<\/div>/gi, "\n")
+                                         .replace(/<\/p>/gi, "\n");
+                                         
+    parsedContent = tempDiv.textContent;
 
     const textToRead = noteTitleInput.value + ".\n\n" + parsedContent;
     if (!textToRead.trim()) return;

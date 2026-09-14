@@ -826,9 +826,11 @@ document.addEventListener("click", (e) => {
   if (window.innerWidth <= 768 && sidebar.classList.contains("open")) {
     if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
       sidebar.classList.remove("open");
+      e.preventDefault();
+      e.stopPropagation();
     }
   }
-});
+}, true);
 
 // Mobile Swipe Gestures for Sidebar
 let touchstartX = 0;
