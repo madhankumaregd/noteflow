@@ -1,6 +1,19 @@
-﻿/* =============================================
+/* =============================================
    DISPLAY NAME EDIT LOGIC
    ============================================= */
+
+const mobileSettingsBtn = document.getElementById("mobileSettingsBtn");
+if (mobileSettingsBtn) {
+  mobileSettingsBtn.addEventListener("click", () => {
+    if (typeof openSettingsPanel === 'function') {
+      openSettingsPanel();
+    } else {
+      settingsPanel.style.display = "flex";
+      editorPanel.style.display = "none";
+    }
+  });
+}
+
 displayNameSettingBtn.addEventListener("click", () => {
   editDisplayNameInput.value = currentProfile?.displayName || "";
   displayNameModalOverlay.classList.add("open");

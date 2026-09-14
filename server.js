@@ -338,7 +338,8 @@ app.post('/api/auth/login', async (req, res) => {
       username: user.username,
       displayName: user.display_name || user.username,
       theme: user.theme || 'dark',
-      customAccent: user.custom_accent || null
+      customAccent: user.custom_accent || null,
+      createdAt: Number(user.created_at)
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -684,7 +685,7 @@ app.post('/api/admin/login', async (req, res) => {
     const storedUsername = usernameResult.rows[0].value;
     const storedHash = passwordResult.rows[0].value;
 
-    if (username !== storedUsername) {
+    if (username.toLowerCase() !== storedUsername.toLowerCase()) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 

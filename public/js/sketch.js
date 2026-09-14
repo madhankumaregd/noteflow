@@ -95,7 +95,17 @@ colorSwatches.forEach(btn => {
 
 sketchCustomColor.addEventListener('input', (e) => setColor(e.target.value));
 
-sketchSizeSlider.addEventListener('input', (e) => { sketchSize = parseInt(e.target.value); });
+sketchSizeSlider.addEventListener('input', (e) => { 
+  sketchSize = parseInt(e.target.value); 
+  if (sketchSizeSelect) sketchSizeSelect.value = sketchSize;
+});
+
+if (sketchSizeSelect) {
+  sketchSizeSelect.addEventListener('change', (e) => {
+    sketchSize = parseInt(e.target.value);
+    if (sketchSizeSlider) sketchSizeSlider.value = sketchSize;
+  });
+}
 
 sketchBrushBtn.addEventListener('click', (e) => {
   e.stopPropagation();

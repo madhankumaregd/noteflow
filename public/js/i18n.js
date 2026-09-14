@@ -33,7 +33,7 @@ const translations = {
     emptySubtitle: "Your thoughts deserve a beautiful home.",
     emptyBtn: "Create your first note",
     diaryPromptPlaceholder: "e.g. My Travel Journal",
-    diaryReflectionHeading: "Daily Reflection:",
+    diaryReflectionHeading: "Dear Diary,",
     saved: "Saved",
     saving: "Saving...",
     wordsSuffix: "words",

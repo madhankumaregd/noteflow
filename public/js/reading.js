@@ -34,7 +34,13 @@ function toggleReadingMode() {
 }
 
 readingModeBtn.addEventListener("click", () => {
-  if (activeNoteId) window.Router.navigate(`/notes/read`);
+  if (activeNoteId) {
+    if (isReadingMode) {
+      window.Router.navigate(`/notes`);
+    } else {
+      window.Router.navigate(`/notes/read`);
+    }
+  }
 });
 exitReadingBtn.addEventListener("click", () => {
   if (activeNoteId) window.Router.navigate(`/notes`);
@@ -42,6 +48,13 @@ exitReadingBtn.addEventListener("click", () => {
 });
 
 function toggleAutoScroll() {
+  if (!isAutoScrolling) {
+    if (noteContent.scrollHeight <= noteContent.clientHeight + 10) {
+      if (typeof showToast === 'function') showToast("Not enough text to scroll.");
+      return;
+    }
+  }
+
   isAutoScrolling = !isAutoScrolling;
   if (isAutoScrolling) {
     autoScrollBtn.classList.add("active");
@@ -78,7 +91,23 @@ function toggleSpeak() {
       speakBtn.classList.remove("active");
     }
   } else {
-    const textToRead = noteTitleInput.value + ".\n" + noteContent.innerText;
+    let parsedContent = "";
+    // Parse note content to add pauses for checklists
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = noteContent.innerHTML;
+    
+    // Replace checkboxes with text equivalents so TTS reads them correctly with pauses
+    const checkboxes = tempDiv.querySelectorAll('input[type="checkbox"]');
+    checkboxes.forEach(cb => {
+      const isChecked = cb.checked || cb.hasAttribute('checked');
+      const textNode = document.createTextNode(isChecked ? "Completed task: " : "Task: ");
+      cb.parentNode.replaceChild(textNode, cb);
+    });
+    
+    // Extract text, ensuring block elements add newlines (which TTS engines interpret as pauses)
+    parsedContent = tempDiv.innerText;
+
+    const textToRead = noteTitleInput.value + ".\n\n" + parsedContent;
     if (!textToRead.trim()) return;
     
     utterance = new SpeechSynthesisUtterance(textToRead);

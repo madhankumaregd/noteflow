@@ -74,6 +74,9 @@ function renderNotesList() {
 }
 
 function renderEditor() {
+  if (window.location.pathname === "/settings") {
+    return; // Don't override settings panel
+  }
   const note = notes.find((n) => n.id === activeNoteId);
   settingsPanel.style.display = "none"; // Hide settings if we're explicitly rendering editor
   
@@ -98,6 +101,10 @@ function renderEditor() {
   editorPanel.style.display = "flex";
   noteTitleInput.value = note.title;
   tagInput.value = note.tags.join(", ");
+  
+  if (noteCreatedDate) {
+    noteCreatedDate.textContent = "Created: " + formatDate(note.createdAt || note.updatedAt);
+  }
 
   noteContent.innerHTML = note.content;
   updateWordCount();

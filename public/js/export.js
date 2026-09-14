@@ -55,7 +55,7 @@ exportDownloadTxt.addEventListener('click', () => {
   if (!note) return;
 
   const title = note.title || 'Untitled';
-  const plainText = stripHtml(note.content);
+  const plainText = formatNoteAsText(note.content);
   const fileContent = `${title}\n${'='.repeat(title.length)}\n\n${plainText}`;
 
   // Create a sanitized filename
@@ -85,7 +85,7 @@ exportShareNative.addEventListener('click', async () => {
   if (!note) return;
 
   const title = note.title || 'Untitled';
-  const plainText = stripHtml(note.content);
+  const plainText = formatNoteAsText(note.content);
 
   try {
     await navigator.share({

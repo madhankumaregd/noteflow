@@ -32,6 +32,27 @@ function stripHtml(html) {
   return temp.textContent || temp.innerText || "";
 }
 
+function formatNoteAsText(html) {
+  const temp = document.createElement("div");
+  temp.innerHTML = html;
+  
+  // Replace checkboxes with text brackets on newlines
+  const checkboxes = temp.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    const isChecked = cb.checked || cb.hasAttribute('checked');
+    const textNode = document.createTextNode(isChecked ? "\n[x] " : "\n[ ] ");
+    cb.parentNode.replaceChild(textNode, cb);
+  });
+  
+  // Replace divs and paragraphs with newlines
+  const blocks = temp.querySelectorAll('div, p, br, li');
+  blocks.forEach(block => {
+    block.insertAdjacentText('beforebegin', '\n');
+  });
+  
+  return (temp.innerText || temp.textContent || "").replace(/\n\s*\n/g, '\n\n').trim();
+}
+
 function updateWordCount() {
   const text = noteContent.innerText || "";
   const words = text.trim().split(/\s+/).filter(word => word.length > 0);

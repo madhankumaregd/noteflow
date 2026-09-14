@@ -231,6 +231,7 @@ function finishLogin(data) {
     displayName: data.displayName || data.username,
     theme: data.theme || 'dark',
     customAccent: data.customAccent || null,
+    createdAt: data.createdAt || null,
     expiresAt: Date.now() + (3 * 24 * 60 * 60 * 1000) // 3 days
   };
   localStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -286,6 +287,9 @@ async function loadProfile() {
       }
     } else {
       console.warn('Profile API returned', res.status, '— using cached session data');
+      if (res.status === 401 || res.status === 403 || res.status === 404) {
+        if (typeof handleLogout === 'function') handleLogout();
+      }
     }
   } catch (err) {
     console.error("Failed to load profile", err);
@@ -306,8 +310,14 @@ function updateProfileUI() {
   profileUsername.textContent = "@" + currentProfile.username;
   profileAvatar.textContent = name.charAt(0).toUpperCase();
   
-  const d = new Date(currentProfile.createdAt);
-  profileCreatedAt.textContent = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  if (currentProfile.createdAt) {
+    const d = new Date(currentProfile.createdAt);
+    if (!isNaN(d.getTime())) {
+      profileCreatedAt.textContent = d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    }
+  } else {
+    profileCreatedAt.textContent = "-";
+  }
   
   selectThemeBtn(currentProfile.theme);
   updateThemeLabel(currentProfile.theme);
@@ -346,7 +356,11 @@ function selectThemeBtn(theme) {
   });
   colorPickerSection.style.display = theme === "custom" ? "block" : "none";
   if (theme === "custom") {
-    setTimeout(initColorPicker, 10);
+    setTimeout(() => {
+      if (typeof window.initColorPicker === 'function') {
+        window.initColorPicker();
+      }
+    }, 10);
   }
 }
 

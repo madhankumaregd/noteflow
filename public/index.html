@@ -454,12 +454,17 @@
       <div class="editor-panel" id="editorPanel" style="display: none">
         <div class="editor-topbar">
           <div class="editor-meta">
-            <input
-              type="text"
-              id="noteTitleInput"
-              class="title-input"
-              placeholder="Note title..."
-            />
+            <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+              <input
+                type="text"
+                id="noteTitleInput"
+                class="title-input"
+                placeholder="Note title..."
+              />
+              <button class="mobile-settings-btn" id="mobileSettingsBtn" title="App Settings">
+                <span class="material-symbols-rounded">settings</span>
+              </button>
+            </div>
             <div class="tag-input-row">
               <span class="tag-label">Tags:</span>
               <input
@@ -468,6 +473,7 @@
                 class="tag-input"
                 placeholder="e.g. work, ideas (comma separated)"
               />
+              <span id="noteCreatedDate" class="note-created-date"></span>
             </div>
           </div>
           <div class="editor-actions">
@@ -898,6 +904,17 @@
         <!-- Size -->
         <div class="ribbon-group">
            <input type="range" id="sketchSizeSlider" class="sketch-size-slider" min="1" max="50" value="3" title="Size" />
+           <select id="sketchSizeSelect" class="sketch-size-select" title="Size">
+             <option value="1">1px</option>
+             <option value="2">2px</option>
+             <option value="3" selected>3px</option>
+             <option value="5">5px</option>
+             <option value="8">8px</option>
+             <option value="12">12px</option>
+             <option value="20">20px</option>
+             <option value="35">35px</option>
+             <option value="50">50px</option>
+           </select>
            <span class="ribbon-label">Size</span>
         </div>
 

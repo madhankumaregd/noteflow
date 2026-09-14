@@ -75,6 +75,7 @@ const editorPanel = document.getElementById("editorPanel");
 const noteTitleInput = document.getElementById("noteTitleInput");
 const tagInput = document.getElementById("tagInput");
 const noteContent = document.getElementById("noteContent");
+const noteCreatedDate = document.getElementById("noteCreatedDate");
 const saveStatus = document.getElementById("saveStatus");
 const wordCount = document.getElementById("wordCount");
 const deleteNoteBtn = document.getElementById("deleteNoteBtn");
@@ -113,6 +114,7 @@ const sketchBrushDropdown = document.getElementById("sketchBrushDropdown");
 const sketchBrushItems = document.querySelectorAll(".sketch-dropdown-item[data-brush]");
 
 const sketchSizeSlider = document.getElementById("sketchSizeSlider");
+const sketchSizeSelect = document.getElementById("sketchSizeSelect");
 
 const color1Wrap = document.getElementById("color1Wrap");
 const color2Wrap = document.getElementById("color2Wrap");
