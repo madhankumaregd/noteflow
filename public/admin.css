@@ -135,7 +135,7 @@ body {
   margin-right: 8px;
 }
 
-.admin-input-wrap input {
+.admin-input-wrap select, .admin-input-wrap input {
   flex: 1;
   background: none;
   border: none;
@@ -143,7 +143,13 @@ body {
   color: var(--text-primary);
   font-family: var(--font-body);
   font-size: 14px;
-  padding: 12px 0;
+  padding: 10px 0;
+  width: 100%;
+}
+
+.admin-input-wrap select option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
 }
 
 .admin-toggle-pw {
@@ -610,26 +616,39 @@ body {
   background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 6px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   color: var(--text-secondary);
-  display: flex;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
+  gap: 4px;
   transition: all var(--transition);
 }
 
 .table-action-btn .material-symbols-rounded {
-  font-size: 18px;
+  font-size: 16px;
 }
 
 .table-action-btn:hover {
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: #1a1200;
 }
 
 .table-action-btn.danger:hover {
+  background: var(--danger);
   border-color: var(--danger);
-  color: var(--danger);
+  color: #fff;
+}
+
+.table-action-btn.restore:hover {
+  background: var(--success);
+  border-color: var(--success);
+  color: #064e3b;
 }
 
 /* =============================================
@@ -763,6 +782,7 @@ body {
 }
 
 .admin-btn.secondary:hover {
+  background: var(--bg-card-hover);
   border-color: var(--border-light);
 }
 

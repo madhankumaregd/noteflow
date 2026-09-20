@@ -62,8 +62,12 @@ function toggleAutoScroll() {
     autoScrollBtn.classList.add("active");
     autoScrollIcon.textContent = "pause";
     
-    const speed = parseInt(localStorage.getItem("autoScrollSpeed") || "2", 10);
-    const intervalMs = Math.max(5, Math.floor(60 / speed)); 
+    const secondsPerScreen = parseInt(localStorage.getItem("autoScrollSpeed") || "30", 10);
+    const screenHeight = noteContent.clientHeight || window.innerHeight;
+    
+    // We want to scroll `screenHeight` pixels over `secondsPerScreen * 1000` ms.
+    // Time per 1 pixel of scroll:
+    const intervalMs = Math.max(5, (secondsPerScreen * 1000) / screenHeight);
     
     autoScrollInterval = setInterval(() => {
       noteContent.scrollTop += 1;
@@ -144,17 +148,6 @@ window.addEventListener('beforeunload', () => synth.cancel());
 
 
 
-if (typeof autoScrollSpeedInput !== 'undefined' && autoScrollSpeedInput) {
-  autoScrollSpeedInput.value = localStorage.getItem('autoScrollSpeed') || '2';
-  if(typeof autoScrollSpeedDisplay !== 'undefined') autoScrollSpeedDisplay.textContent = autoScrollSpeedInput.value;
-  
-  autoScrollSpeedInput.addEventListener('input', (e) => {
-    localStorage.setItem('autoScrollSpeed', e.target.value);
-    if(typeof autoScrollSpeedDisplay !== 'undefined') autoScrollSpeedDisplay.textContent = e.target.value;
-    if (isAutoScrolling) {
-      stopAutoScroll();
-      toggleAutoScroll();
-    }
-  });
+if (typeof autoScrollSpeedSelect !== 'undefined' && autoScrollSpeedSelect) {
+  autoScrollSpeedSelect.value = localStorage.getItem('autoScrollSpeed') || '30';
 }
-

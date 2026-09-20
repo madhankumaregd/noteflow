@@ -161,6 +161,17 @@ async function initDb() {
       );
     `);
 
+    // API Keys table
+    await turso.execute(`
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id TEXT PRIMARY KEY,
+        name TEXT,
+        user_id TEXT,
+        status TEXT,
+        created_at INTEGER
+      );
+    `);
+
     // Set default admin credentials if none exist
     const existing = await turso.execute({
       sql: 'SELECT value FROM admin_config WHERE key = ?',
@@ -611,6 +622,139 @@ app.delete('/api/notes/:id', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting note:', err);
+    res.status(500).json({ error: 'Failed to delete note' });
+  }
+});
+
+/* =============================================
+   EXTERNAL API (Protected via API Key)
+   ============================================= */
+
+// External API auth middleware
+async function requireApiKey(req, res, next) {
+  const apiKeyHeader = req.headers['x-api-key'] || req.headers['authorization'];
+  if (!apiKeyHeader) {
+    return res.status(401).json({ error: 'Unauthorized: Missing API Key' });
+  }
+
+  // If using "Bearer YOUR_KEY" format
+  const key = apiKeyHeader.startsWith('Bearer ') ? apiKeyHeader.slice(7) : apiKeyHeader;
+
+  if (!turso) {
+    return res.status(500).json({ error: 'Database not connected' });
+  }
+
+  try {
+    const result = await turso.execute({
+      sql: 'SELECT user_id, status FROM api_keys WHERE id = ?',
+      args: [key]
+    });
+
+    if (result.rows.length === 0 || result.rows[0].status !== 'active') {
+      return res.status(401).json({ error: 'Unauthorized: Invalid or Inactive API Key' });
+    }
+
+    req.userId = result.rows[0].user_id;
+    next();
+  } catch (err) {
+    console.error('API key verification error:', err);
+    res.status(500).json({ error: 'Server error during auth' });
+  }
+}
+
+// GET /api/external/notes — Get all notes for default user
+app.get('/api/external/notes', requireApiKey, async (req, res) => {
+  try {
+    const result = await turso.execute({
+      sql: 'SELECT * FROM notes WHERE user_id = ? AND deleted_at IS NULL ORDER BY updated_at DESC',
+      args: [req.userId]
+    });
+    const parsedNotes = result.rows.map(row => ({
+      id: row.id,
+      userId: row.user_id,
+      title: row.title,
+      content: row.content,
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+    recordRead();
+    res.json(parsedNotes);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch notes' });
+  }
+});
+
+// POST /api/external/notes — Create note for default user
+app.post('/api/external/notes', requireApiKey, async (req, res) => {
+  const { title, content, tags } = req.body;
+  if (!title && !content) return res.status(400).json({ error: 'Title or content required' });
+  
+  const id = uuidv4();
+  const now = Date.now();
+  const tagsJson = JSON.stringify(tags || []);
+
+  try {
+    await turso.execute({
+      sql: 'INSERT INTO notes (id, user_id, title, content, tags, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      args: [id, req.userId, title || '', content || '', tagsJson, now, now]
+    });
+    recordWrite();
+    res.json({ id, userId: req.userId, title, content, tags, createdAt: now, updatedAt: now });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create note' });
+  }
+});
+
+// PUT /api/external/notes/:id — Update a specific note
+app.put('/api/external/notes/:id', requireApiKey, async (req, res) => {
+  const { id } = req.params;
+  const { title, content, tags } = req.body;
+  const now = Date.now();
+
+  try {
+    // Make sure note exists and belongs to the default user
+    const check = await turso.execute({
+      sql: 'SELECT id FROM notes WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      args: [id, req.userId]
+    });
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Note not found' });
+
+    let sql = 'UPDATE notes SET updated_at = ?';
+    const args = [now];
+    
+    if (title !== undefined) { sql += ', title = ?'; args.push(title); }
+    if (content !== undefined) { sql += ', content = ?'; args.push(content); }
+    if (tags !== undefined) { sql += ', tags = ?'; args.push(JSON.stringify(tags)); }
+    
+    sql += ' WHERE id = ? AND user_id = ?';
+    args.push(id, req.userId);
+
+    await turso.execute({ sql, args });
+    recordWrite();
+    res.json({ success: true, id, updatedAt: now });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update note' });
+  }
+});
+
+// DELETE /api/external/notes/:id — Trash a specific note
+app.delete('/api/external/notes/:id', requireApiKey, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const check = await turso.execute({
+      sql: 'SELECT id FROM notes WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      args: [id, req.userId]
+    });
+    if (check.rows.length === 0) return res.status(404).json({ error: 'Note not found' });
+
+    await turso.execute({
+      sql: 'UPDATE notes SET deleted_at = ? WHERE id = ? AND user_id = ?',
+      args: [Date.now(), id, req.userId]
+    });
+    recordWrite();
+    res.json({ success: true, trashed: true });
+  } catch (err) {
     res.status(500).json({ error: 'Failed to delete note' });
   }
 });
@@ -1147,6 +1291,7 @@ app.get('/api/admin/settings', requireAdmin, async (req, res) => {
       sql: 'SELECT value FROM admin_config WHERE key = ?',
       args: ['admin_username']
     });
+    
     res.json({
       adminUsername: result.rows[0]?.value || 'admin',
       uptimeSeconds: Math.floor((Date.now() - serverStartTime) / 1000),
@@ -1164,7 +1309,7 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
   try {
     const { adminUsername, adminPassword } = req.body;
 
-    if (adminUsername) {
+    if (adminUsername !== undefined) {
       await turso.execute({
         sql: 'INSERT OR REPLACE INTO admin_config (key, value) VALUES (?, ?)',
         args: ['admin_username', adminUsername]
@@ -1183,6 +1328,63 @@ app.put('/api/admin/settings', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('Admin settings update error:', err);
     res.status(500).json({ error: 'Failed to update settings' });
+  }
+});
+
+/* =============================================
+   ADMIN API KEYS
+   ============================================= */
+
+app.get('/api/admin/apikeys', requireAdmin, async (req, res) => {
+  try {
+    const keys = await turso.execute('SELECT id, name, user_id, status, created_at FROM api_keys ORDER BY created_at DESC');
+    res.json(keys.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch API keys' });
+  }
+});
+
+app.post('/api/admin/apikeys', requireAdmin, async (req, res) => {
+  const { name, user_id } = req.body;
+  if (!name || !user_id) return res.status(400).json({ error: 'Name and user ID are required' });
+  
+  const id = 'sk_' + Array.from(crypto.getRandomValues(new Uint8Array(24)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  try {
+    await turso.execute({
+      sql: 'INSERT INTO api_keys (id, name, user_id, status, created_at) VALUES (?, ?, ?, ?, ?)',
+      args: [id, name, user_id, 'active', Date.now()]
+    });
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create API key' });
+  }
+});
+
+app.put('/api/admin/apikeys/:id', requireAdmin, async (req, res) => {
+  const { status } = req.body;
+  try {
+    await turso.execute({
+      sql: 'UPDATE api_keys SET status = ? WHERE id = ?',
+      args: [status, req.params.id]
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update API key status' });
+  }
+});
+
+app.delete('/api/admin/apikeys/:id', requireAdmin, async (req, res) => {
+  try {
+    await turso.execute({
+      sql: 'DELETE FROM api_keys WHERE id = ?',
+      args: [req.params.id]
+    });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete API key' });
   }
 });
 

@@ -690,6 +690,16 @@ saveChecklistSettings.addEventListener("click", () => {
     note.settings.checklistRefresh = config;
   }
   
+  if (typeof autoScrollSpeedSelect !== 'undefined' && autoScrollSpeedSelect) {
+    localStorage.setItem('autoScrollSpeed', autoScrollSpeedSelect.value);
+    // Note: isAutoScrolling and stopAutoScroll/toggleAutoScroll are in reading.js
+    // We can dispatch a custom event or let reading.js handle it. Or just rely on the global variables.
+    if (typeof isAutoScrolling !== 'undefined' && isAutoScrolling) {
+      if (typeof stopAutoScroll === 'function') stopAutoScroll();
+      if (typeof toggleAutoScroll === 'function') toggleAutoScroll();
+    }
+  }
+
   checklistSettingsModalOverlay.classList.remove("open");
   autoSave();
   if (activeNoteId) window.Router.navigate(`/notes`);

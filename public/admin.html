@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add,analytics,arrow_back,bar_chart,block,check_circle,close,cloud,dashboard,database,delete,delete_forever,description,download,edit,error,group,key,logout,manage_accounts,note,person,person_off,refresh,restore_from_trash,save,search,settings,shield,storage,trending_up,visibility,visibility_off,warning&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=account_circle,add,analytics,arrow_back,arrow_drop_down,bar_chart,block,check_circle,close,cloud,dashboard,database,delete,delete_forever,description,download,edit,error,expand_more,group,key,logout,manage_accounts,note,person,person_off,refresh,restore_from_trash,save,search,settings,shield,storage,trending_up,visibility,visibility_off,warning&display=swap" />
     <link rel="stylesheet" href="admin.css" />
   </head>
   <body>
@@ -220,9 +220,8 @@
               <input type="text" placeholder="Search notes by title, content, or owner..." id="notesSearchInput" />
             </div>
             <div class="admin-toolbar-actions">
-              <select id="notesFilterUser" class="admin-select">
-                <option value="">All Users</option>
-              </select>
+              <input list="notesFilterUserList" id="notesFilterUser" class="admin-input" placeholder="All Users / Search...">
+              <datalist id="notesFilterUserList"></datalist>
             </div>
           </div>
           <div class="admin-card">
@@ -354,19 +353,23 @@
                 <h3><span class="material-symbols-rounded">shield</span> Admin Credentials</h3>
               </div>
               <div class="admin-card-body">
-                <div class="settings-form">
-                  <div class="admin-field">
-                    <label for="settingsAdminUser">Admin Username</label>
-                    <input type="text" id="settingsAdminUser" class="admin-input" />
+                <div class="admin-field">
+                  <label for="settingsAdminUser">Admin Username</label>
+                  <div class="admin-input-wrap">
+                    <span class="material-symbols-rounded">person</span>
+                    <input type="text" id="settingsAdminUser" placeholder="New username" />
                   </div>
-                  <div class="admin-field">
-                    <label for="settingsAdminPass">New Admin Password</label>
-                    <input type="password" id="settingsAdminPass" class="admin-input" placeholder="Leave blank to keep current" />
-                  </div>
-                  <button class="admin-btn primary" id="saveAdminCredentialsBtn">
-                    <span class="material-symbols-rounded">save</span> Save Credentials
-                  </button>
                 </div>
+                <div class="admin-field">
+                  <label for="settingsAdminPass">New Admin Password</label>
+                  <div class="admin-input-wrap">
+                    <span class="material-symbols-rounded">key</span>
+                    <input type="password" id="settingsAdminPass" placeholder="Leave blank to keep unchanged" />
+                  </div>
+                </div>
+                <button class="admin-btn primary" id="saveAdminCredentialsBtn">
+                  <span class="material-symbols-rounded">save</span> Save Changes
+                </button>
               </div>
             </div>
 
@@ -422,6 +425,74 @@
                       <p>Move all user accounts and their notes to trash. Recoverable from the Trash page.</p>
                     </div>
                     <button class="admin-btn danger" id="deleteAllUsersBtn">Trash All Users &amp; Notes</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- External API Integration -->
+            <div class="admin-card" style="grid-column: 1 / -1;">
+              <div class="admin-card-header">
+                <h3><span class="material-symbols-rounded">key</span> External API Keys</h3>
+              </div>
+              <div class="admin-card-body no-pad">
+                <div style="padding: 16px; border-bottom: 1px solid var(--border);">
+                  <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+                    Generate API keys for external apps (like AI assistants) to read and write notes securely on behalf of a specific user.
+                  </p>
+                  
+                  <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+                    <div class="admin-field" style="margin:0; flex-grow:1;">
+                      <label for="newApiKeyName">Key Name / Label</label>
+                      <input type="text" id="newApiKeyName" class="admin-input" placeholder="e.g. AI Assistant">
+                    </div>
+                    <div class="admin-field" style="margin:0; flex-grow:1;">
+                      <label>Default User Account</label>
+                      <div class="admin-input-wrap custom-dropdown-wrap" id="apiUserSelectContainer" style="position:relative; cursor:pointer;">
+                        <span class="material-symbols-rounded">person</span>
+                        <div class="custom-dropdown-display" id="apiUserSelectDisplay" style="flex:1; display:flex; justify-content:space-between; align-items:center; padding:10px 0; color:var(--text-primary); font-size:14px;">
+                          <span id="apiUserSelectText" style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">-- Select User --</span>
+                          <span class="material-symbols-rounded" style="font-size:18px; margin-right:0;">arrow_drop_down</span>
+                        </div>
+                        <div class="custom-dropdown-menu" id="apiUserSelectMenu" style="display:none; position:absolute; top:100%; left:0; right:0; background:var(--bg-surface); border:1px solid var(--border); border-radius:var(--radius-sm); z-index:100; margin-top:4px; box-shadow:0 4px 12px rgba(0,0,0,0.5); max-height:250px; flex-direction:column;">
+                          <div style="padding:8px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+                            <span class="material-symbols-rounded" style="font-size:16px; color:var(--text-muted);">search</span>
+                            <input type="text" id="apiUserSearchInput" placeholder="Search user..." style="flex:1; background:transparent; border:none; outline:none; color:var(--text-primary); font-size:13px;" />
+                          </div>
+                          <div id="apiUserOptionsList" style="overflow-y:auto; flex:1; display:flex; flex-direction:column;">
+                            <!-- Options injected via JS -->
+                          </div>
+                        </div>
+                        <input type="hidden" id="newApiDefaultUser" value="" />
+                      </div>
+                    </div>
+                    <button class="admin-btn primary" id="createApiKeyBtn" style="height:42px;">
+                      <span class="material-symbols-rounded">add</span> Create Key
+                    </button>
+                  </div>
+                </div>
+                
+                <div class="admin-table-container">
+                  <table class="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Name</th>
+                        <th>Default User</th>
+                        <th>API Key</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="apiKeysBody">
+                      <tr><td colspan="5" class="table-empty">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                
+                <div style="padding: 16px;">
+                  <div style="background:var(--bg-main); padding:12px; border-radius:4px; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); border:1px solid var(--border);">
+                    <div style="color:var(--accent); margin-bottom:4px;">// Example API Request</div>
+                    <div>curl -H "x-api-key: YOUR_KEY" http://localhost:3000/api/external/notes</div>
                   </div>
                 </div>
               </div>

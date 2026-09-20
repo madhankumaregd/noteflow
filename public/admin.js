@@ -43,6 +43,7 @@ const statsHistoryBody = document.getElementById("statsHistoryBody");
 const allNotesBody = document.getElementById("allNotesBody");
 const notesSearchInput = document.getElementById("notesSearchInput");
 const notesFilterUser = document.getElementById("notesFilterUser");
+const notesFilterUserList = document.getElementById("notesFilterUserList");
 
 // Users elements
 const allUsersBody = document.getElementById("allUsersBody");
@@ -416,13 +417,13 @@ async function loadNotes() {
   allNotes = data.notes || [];
   const users = data.users || [];
 
-  // Populate filter dropdown
-  notesFilterUser.innerHTML = '<option value="">All Users</option>';
+  // Populate filter datalist
+  notesFilterUserList.innerHTML = '';
   users.forEach((u) => {
     const opt = document.createElement("option");
-    opt.value = u.id;
-    opt.textContent = `${u.display_name || u.username} (${u.username})`;
-    notesFilterUser.appendChild(opt);
+    opt.value = u.username;
+    opt.textContent = u.display_name ? `${u.display_name} (@${u.username})` : `@${u.username}`;
+    notesFilterUserList.appendChild(opt);
   });
 
   renderNotes();
@@ -442,7 +443,7 @@ function renderNotes() {
     );
   }
   if (filterUser) {
-    filtered = filtered.filter((n) => n.userId === filterUser);
+    filtered = filtered.filter((n) => n.userId === filterUser || n.username === filterUser);
   }
 
   if (filtered.length === 0) {
@@ -463,10 +464,10 @@ function renderNotes() {
       <td>
         <div class="table-actions">
           <button class="table-action-btn" title="View" onclick="viewNote('${n.id}')">
-            <span class="material-symbols-rounded">visibility</span>
+            <span class="material-symbols-rounded">visibility</span> View
           </button>
           <button class="table-action-btn danger" title="Move to Trash" onclick="trashNote('${n.id}')">
-            <span class="material-symbols-rounded">delete</span>
+            <span class="material-symbols-rounded">delete</span> Delete
           </button>
         </div>
       </td>
@@ -566,10 +567,10 @@ function renderUsers() {
       <td>
         <div class="table-actions">
           <button class="table-action-btn ${isActive ? 'danger' : 'restore'}" title="${isActive ? 'Deactivate' : 'Activate'}" onclick="toggleUserStatus('${u.id}', '${isActive ? 'deactivated' : 'active'}')">
-            <span class="material-symbols-rounded">${isActive ? 'person_off' : 'person'}</span>
+            <span class="material-symbols-rounded">${isActive ? 'person_off' : 'person'}</span> ${isActive ? 'Deactivate' : 'Activate'}
           </button>
           <button class="table-action-btn danger" title="Move to Trash" onclick="trashUser('${u.id}')">
-            <span class="material-symbols-rounded">delete</span>
+            <span class="material-symbols-rounded">delete</span> Delete
           </button>
         </div>
       </td>
@@ -653,11 +654,14 @@ function renderTrash() {
         <td>${timeAgo(n.deletedAt)}</td>
         <td>
           <div class="table-actions">
+            <button class="table-action-btn" title="View" onclick="viewTrashedNote('${n.id}')">
+              <span class="material-symbols-rounded">visibility</span> View
+            </button>
             <button class="table-action-btn restore" title="Restore" onclick="restoreNote('${n.id}')">
-              <span class="material-symbols-rounded">restore_from_trash</span>
+              <span class="material-symbols-rounded">restore_from_trash</span> Restore
             </button>
             <button class="table-action-btn danger" title="Delete Permanently" onclick="permanentDeleteNote('${n.id}')">
-              <span class="material-symbols-rounded">delete_forever</span>
+              <span class="material-symbols-rounded">delete_forever</span> Perm. Delete
             </button>
           </div>
         </td>
@@ -683,10 +687,10 @@ function renderTrash() {
         <td>
           <div class="table-actions">
             <button class="table-action-btn restore" title="Restore User & Notes" onclick="restoreUser('${u.id}')">
-              <span class="material-symbols-rounded">restore_from_trash</span>
+              <span class="material-symbols-rounded">restore_from_trash</span> Restore
             </button>
             <button class="table-action-btn danger" title="Delete Permanently" onclick="permanentDeleteUser('${u.id}')">
-              <span class="material-symbols-rounded">delete_forever</span>
+              <span class="material-symbols-rounded">delete_forever</span> Perm. Delete
             </button>
           </div>
         </td>
@@ -694,6 +698,19 @@ function renderTrash() {
     `).join("");
   }
 }
+
+window.viewTrashedNote = function (noteId) {
+  const note = trashedNotes.find((n) => n.id === noteId);
+  if (!note) return;
+  noteViewTitle.textContent = note.title || "Untitled (Trashed)";
+  noteViewMeta.innerHTML = `
+    <span>Owner: ${escapeHtml(note.username || note.userId || "Unknown")}</span>
+    <span>Deleted: ${formatDate(note.deletedAt)}</span>
+    ${(note.tags || []).map((t) => `<span>${escapeHtml(t)}</span>`).join("")}
+  `;
+  noteViewContent.innerHTML = note.content || "<em>No content</em>";
+  noteViewModalOverlay.classList.add("open");
+};
 
 window.restoreNote = async function (noteId) {
   try {
@@ -791,6 +808,85 @@ emptyTrashBtn.addEventListener("click", () => {
 });
 
 /* ---- SETTINGS ---- */
+/* ---- SETTINGS ---- */
+const newApiKeyName = document.getElementById("newApiKeyName");
+const newApiDefaultUser = document.getElementById("newApiDefaultUser");
+const createApiKeyBtn = document.getElementById("createApiKeyBtn");
+const apiKeysBody = document.getElementById("apiKeysBody");
+let allApiKeys = [];
+
+const apiUserSelectContainer = document.getElementById("apiUserSelectContainer");
+const apiUserSelectDisplay = document.getElementById("apiUserSelectDisplay");
+const apiUserSelectText = document.getElementById("apiUserSelectText");
+const apiUserSelectMenu = document.getElementById("apiUserSelectMenu");
+const apiUserSearchInput = document.getElementById("apiUserSearchInput");
+const apiUserOptionsList = document.getElementById("apiUserOptionsList");
+
+function renderApiUserOptions(filterText = "") {
+  apiUserOptionsList.innerHTML = "";
+  const lowerFilter = filterText.toLowerCase();
+  
+  // Default option
+  if ("-- select user --".includes(lowerFilter)) {
+    const defaultOpt = document.createElement("div");
+    defaultOpt.className = "custom-select-option";
+    defaultOpt.style.cssText = "padding:8px 12px; cursor:pointer; color:var(--text-primary); font-size:13px;";
+    defaultOpt.textContent = "-- Select User --";
+    defaultOpt.addEventListener("click", () => {
+      newApiDefaultUser.value = "";
+      apiUserSelectText.textContent = "-- Select User --";
+      apiUserSelectMenu.style.display = "none";
+    });
+    defaultOpt.addEventListener("mouseover", () => defaultOpt.style.background = "var(--bg-hover)");
+    defaultOpt.addEventListener("mouseout", () => defaultOpt.style.background = "transparent");
+    apiUserOptionsList.appendChild(defaultOpt);
+  }
+
+  allUsers.forEach(u => {
+    const displayText = u.display_name ? `${u.display_name} (@${u.username})` : `@${u.username}`;
+    if (displayText.toLowerCase().includes(lowerFilter)) {
+      const opt = document.createElement("div");
+      opt.className = "custom-select-option";
+      opt.style.cssText = "padding:8px 12px; cursor:pointer; color:var(--text-primary); font-size:13px;";
+      opt.textContent = displayText;
+      opt.addEventListener("click", () => {
+        newApiDefaultUser.value = u.id;
+        apiUserSelectText.textContent = displayText;
+        apiUserSelectMenu.style.display = "none";
+      });
+      opt.addEventListener("mouseover", () => opt.style.background = "var(--bg-hover)");
+      opt.addEventListener("mouseout", () => opt.style.background = "transparent");
+      apiUserOptionsList.appendChild(opt);
+    }
+  });
+}
+
+if (apiUserSelectDisplay) {
+  apiUserSelectDisplay.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isVisible = apiUserSelectMenu.style.display === "flex";
+    apiUserSelectMenu.style.display = isVisible ? "none" : "flex";
+    if (!isVisible) {
+      apiUserSearchInput.value = "";
+      renderApiUserOptions("");
+      apiUserSearchInput.focus();
+    }
+  });
+
+  apiUserSearchInput.addEventListener("input", (e) => {
+    renderApiUserOptions(e.target.value);
+  });
+
+  apiUserSearchInput.addEventListener("click", (e) => e.stopPropagation());
+  apiUserOptionsList.addEventListener("click", (e) => e.stopPropagation());
+
+  document.addEventListener("click", (e) => {
+    if (apiUserSelectMenu.style.display === "flex" && !apiUserSelectContainer.contains(e.target)) {
+      apiUserSelectMenu.style.display = "none";
+    }
+  });
+}
+
 async function loadSettings() {
   try {
     const res = await adminFetch("/settings");
@@ -798,10 +894,127 @@ async function loadSettings() {
     settingsAdminUser.value = data.adminUsername || "";
     settingsUptime.textContent = formatUptime(data.uptimeSeconds || 0);
     document.getElementById("settingsRuntime").textContent = data.nodeVersion || "Node.js";
+
+    // Load users into default user dropdown
+    if (!allUsers || allUsers.length === 0) {
+      const usersRes = await adminFetch("/users");
+      const usersData = await usersRes.json();
+      allUsers = usersData || [];
+    }
+    
+    renderApiUserOptions();
+
+    await loadApiKeys();
+
   } catch (err) {
     console.error("Error loading settings:", err);
   }
 }
+
+async function loadApiKeys() {
+  try {
+    const res = await adminFetch("/apikeys");
+    allApiKeys = await res.json();
+    renderApiKeys();
+  } catch (err) {
+    console.error("Error loading API keys:", err);
+  }
+}
+
+function renderApiKeys() {
+  if (allApiKeys.length === 0) {
+    apiKeysBody.innerHTML = '<tr><td colspan="5" class="table-empty">No API keys configured</td></tr>';
+    return;
+  }
+  
+  apiKeysBody.innerHTML = allApiKeys.map(k => {
+    const isActive = k.status === 'active';
+    const user = allUsers.find(u => u.id === k.user_id);
+    const userName = user ? (user.display_name || user.username) : "Unknown User";
+    
+    return `
+    <tr>
+      <td><strong>${escapeHtml(k.name || "Unnamed")}</strong></td>
+      <td>${escapeHtml(userName)}</td>
+      <td style="font-family:var(--font-mono); font-size:11px;">${escapeHtml(k.id)}</td>
+      <td><span class="status-badge ${isActive ? 'active' : 'deactivated'}">${isActive ? 'Active' : 'Inactive'}</span></td>
+      <td>
+        <div class="table-actions">
+          <button class="table-action-btn ${isActive ? 'danger' : 'restore'}" title="${isActive ? 'Deactivate' : 'Activate'}" onclick="toggleApiKey('${k.id}', '${isActive ? 'inactive' : 'active'}')">
+            <span class="material-symbols-rounded">${isActive ? 'block' : 'check_circle'}</span> ${isActive ? 'Deactivate' : 'Activate'}
+          </button>
+          <button class="table-action-btn danger" title="Delete API Key" onclick="deleteApiKey('${k.id}')">
+            <span class="material-symbols-rounded">delete</span> Delete
+          </button>
+        </div>
+      </td>
+    </tr>
+    `;
+  }).join("");
+}
+
+createApiKeyBtn.addEventListener("click", async () => {
+  const name = newApiKeyName.value.trim();
+  const user_id = newApiDefaultUser.value;
+  if (!name || !user_id) {
+    showToast("Name and Default User are required", "error");
+    return;
+  }
+  try {
+    const res = await adminFetch("/apikeys", {
+      method: "POST",
+      body: JSON.stringify({ name, user_id }),
+    });
+    if (res.ok) {
+      showToast("API key created successfully");
+      newApiKeyName.value = "";
+      newApiDefaultUser.value = "";
+      await loadApiKeys();
+    } else {
+      showToast("Failed to create API key", "error");
+    }
+  } catch (err) {
+    showToast("Error creating API key", "error");
+  }
+});
+
+window.toggleApiKey = async function(id, status) {
+  try {
+    const res = await adminFetch(`/apikeys/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status })
+    });
+    if (res.ok) {
+      showToast(`API key ${status === 'active' ? 'activated' : 'deactivated'}`);
+      await loadApiKeys();
+    } else {
+      showToast("Failed to update status", "error");
+    }
+  } catch (err) {
+    showToast("Error updating status", "error");
+  }
+};
+
+window.deleteApiKey = function(id) {
+  const key = allApiKeys.find(k => k.id === id);
+  showConfirm(
+    "Delete API Key",
+    `Permanently delete API key "${escapeHtml(key?.name || "")}"?`,
+    async () => {
+      try {
+        const res = await adminFetch(`/apikeys/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          showToast("API key deleted");
+          await loadApiKeys();
+        } else {
+          showToast("Failed to delete API key", "error");
+        }
+      } catch (err) {
+        showToast("Error deleting API key", "error");
+      }
+    }
+  );
+};
 
 saveAdminCredentialsBtn.addEventListener("click", async () => {
   const username = settingsAdminUser.value.trim();

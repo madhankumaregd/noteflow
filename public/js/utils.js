@@ -44,6 +44,34 @@ function formatNoteAsText(html) {
     cb.parentNode.replaceChild(textNode, cb);
   });
   
+  // Format tables to basic markdown representation
+  const tables = temp.querySelectorAll('table');
+  tables.forEach(table => {
+    let tableText = '\n\n';
+    const rows = table.querySelectorAll('tr');
+    rows.forEach((row, rowIndex) => {
+      let rowText = '|';
+      let separator = '|';
+      const cells = row.querySelectorAll('th, td');
+      cells.forEach(cell => {
+        // Clean up handles inside cells
+        const clone = cell.cloneNode(true);
+        clone.querySelectorAll('.table-move-handle, .table-col-resize-handle, .table-overall-resize-handle').forEach(h => h.remove());
+        const text = (clone.innerText || clone.textContent || "").trim().replace(/\n/g, ' ');
+        rowText += ` ${text} |`;
+        separator += '---|';
+      });
+      tableText += rowText + '\n';
+      // Add separator row after headers
+      if (rowIndex === 0 && row.querySelector('th')) {
+        tableText += separator + '\n';
+      }
+    });
+    tableText += '\n';
+    const textNode = document.createTextNode(tableText);
+    table.parentNode.replaceChild(textNode, table);
+  });
+  
   // Replace divs and paragraphs with newlines
   const blocks = temp.querySelectorAll('div, p, br, li');
   blocks.forEach(block => {

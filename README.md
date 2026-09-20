@@ -1,6 +1,6 @@
 # ✦ Noteflow — Notes App
 
-A beautiful, dark-themed notes web app with Create, Edit, Delete, Search, Tags, Themes, and Checklists. Built with pure HTML + CSS + JS using browser localStorage for persistence. Served via a lightweight Node.js + Express server.
+A beautiful, dark-themed, advanced notes web app with multi-user authentication, rich text editing, drawing sketchpad, device perspective previews, Admin Panel, and external API integrations. Built with HTML, CSS, JavaScript, and Node.js with a Turso libSQL database.
 
 ---
 
@@ -8,13 +8,22 @@ A beautiful, dark-themed notes web app with Create, Edit, Delete, Search, Tags, 
 
 ```
 notes-app/
-├── server.js          ← Node.js Express server (entry point, port 3000)
-├── package.json       ← Dependencies & start script
-├── README.md          ← This file
-└── public/
-    ├── index.html     ← Main HTML (sidebar + editor + modal)
-    ├── style.css      ← All styling (theming, responsive, animations)
-    └── app.js         ← All app logic (CRUD, search, tags, themes, checklists)
+├── server.js          ← Node.js Express server & API endpoints
+├── .env               ← Environment variables (DB credentials, JWT secrets)
+├── public/
+│   ├── index.html     ← Main App UI (Notes, Sketch, Settings)
+│   ├── admin.html     ← Admin Panel UI
+│   ├── style.css      ← Main styling & theming
+│   ├── admin.css      ← Admin Panel styling
+│   └── js/
+│       ├── core.js    ← Editor, toolbars, and rich text logic
+│       ├── auth.js    ← Multi-user login, registration, and tokens
+│       ├── sketch.js  ← Canvas drawing and sketch saving
+│       ├── tables.js  ← Advanced table insertion, resizing & repositioning
+│       ├── export.js  ← PDF, image, and text exporting
+│       ├── reading.js ← Presentation/Device perspective auto-scrolling
+│       ├── admin.js   ← Admin panel logic (Users, Trash, API Keys)
+│       └── utils.js   ← Global utilities and helpers
 ```
 
 ---
@@ -25,39 +34,51 @@ notes-app/
 # 1. Install dependencies
 npm install
 
-# 2. Start the server
-npm start
+# 2. Configure Environment
+# Copy .env.example to .env and add your Turso DB URL, Auth Token, and JWT secrets
+cp .env.example .env
 
-# 3. Open in browser
-http://localhost:3000
+# 3. Start the server
+npm run dev
+
+# 4. Open in browser
+# Main App: http://localhost:3000
+# Admin Panel: http://localhost:3000/note-manager
 ```
 
 ---
 
-## ✨ Features
+## ✨ Features & Recent Updates
 
-- ✅ **Create, edit, delete notes** — auto-saves as you type
-- ✅ **Rich text editor** — contenteditable div with HTML support
-- ✅ **Checklists** — add interactive checkboxes inside notes
-- ✅ **Search** — filter notes by title, content, or tag
-- ✅ **Tags** — assign comma-separated tags, filter by tag pills in the sidebar
-- ✅ **3 Themes** — Dark, Light, and Ocean (persisted in localStorage)
-- ✅ **Keyboard shortcut** — `Ctrl/Cmd + N` to create a new note, `Esc` to dismiss modals
-- ✅ **Delete confirmation modal** — with backdrop blur animation
-- ✅ **Responsive design** — collapsible sidebar with mobile hamburger toggle
-- ✅ **All data stored in browser localStorage** — no database or backend storage needed
+### 📝 Core Editing & Note Taking
+- **Rich Text Editor:** Fully customizable text editor with bold, italic, highlights, lists, quotes, and custom typography.
+- **Advanced Tables:** Insert tables at the cursor, precisely resize columns, and drag-and-drop to reposition tables anywhere within the note.
+- **Sketchpad:** Integrated drawing canvas with brushes (calligraphy, airbrush, oil, etc.), shapes, and pressure sensitivity. Sketches are saved inline in notes.
+- **Checklists:** Interactive checklists that track completion status.
+- **Tags & Search:** Assign custom tags to notes and search across all content, tags, and titles globally.
+- **Exporting & Sharing:** Export notes smoothly to PDF or Images while preserving table layouts and sketches perfectly.
+
+### 👓 Device Perspectives & Auto-Scroll
+- **Responsive Previews:** View notes constrained to specific device aspect ratios (Mobile, Tablet, Desktop) for presentation and reading.
+- **Auto-Scroll:** Read hands-free with configurable, automatic scrolling speeds tailored to different reading speeds (15s, 30s, 1m, 1.5m, 2m per screen).
+
+### 👥 Multi-User & Security
+- **Authentication:** Secure JWT-based authentication system. Every user has their own private workspace.
+- **Database Backend:** Persistent Turso Cloud SQLite (libSQL) backend, replacing the old `localStorage` design for true cloud sync.
+
+### 🔧 Admin Panel (`/note-manager`)
+- **Dashboard Analytics:** Overview of system health, active users, total notes, and database size.
+- **User Management:** View all registered users, manage their status, and search easily via custom searchable dropdowns.
+- **Trash & Recovery:** View deleted notes and users in the Trash tab, and restore them securely. 
+- **External API Keys:** Generate, manage, and deactivate external API keys allowing third-party services (like AI Assistants) to securely interact with specific user accounts. Features a custom searchable dropdown for user assignment.
 
 ---
 
-## 🎨 Design Highlights
+## 🎨 Design Aesthetics
 
-| Detail              | Implementation                                      |
-|---------------------|-----------------------------------------------------|
-| Typography          | Playfair Display (headings) + DM Sans (body) via Google Fonts |
-| Theming             | CSS custom properties swapped per `body.theme-*` class |
-| Animations          | Logo pulse, modal scale-in, hover transitions       |
-| Scrollbar           | Custom thin scrollbar styling (WebKit + Firefox)    |
-| Active note accent  | Left-border accent strip on the selected note card  |
+- **Typography:** Playfair Display for elegant headings, DM Sans for clean UI, JetBrains Mono for code.
+- **Dynamic Theming:** Deep dark modes, glassmorphism UI elements, customizable accent colors, and custom scrollbars.
+- **Micro-Animations:** Smooth hover states, focus rings, modal scale-ins, and animated toggle buttons to create a responsive, premium feel.
 
 ---
 
@@ -66,10 +87,10 @@ http://localhost:3000
 | Layer      | Tech                          |
 |------------|-------------------------------|
 | Frontend   | HTML5, CSS3, Vanilla JS       |
-| Editor     | `contenteditable` div (HTML)  |
-| Storage    | localStorage (browser)        |
-| Server     | Node.js ≥ 16 + Express 4     |
-| Fonts      | Google Fonts (Playfair Display + DM Sans) |
+| Backend    | Node.js, Express.js           |
+| Database   | Turso Cloud SQLite (libSQL)   |
+| Auth       | JWT (JSON Web Tokens), bcrypt |
+| Design     | Custom CSS, Material Symbols  |
 
 ---
 
@@ -77,5 +98,6 @@ http://localhost:3000
 
 | Shortcut          | Action            |
 |-------------------|--------------------|
-| `Ctrl/Cmd + N`   | Create a new note  |
-| `Escape`          | Close delete modal |
+| `Ctrl/Cmd + N`    | Create a new note  |
+| `Ctrl/Cmd + S`    | Save current note  |
+| `Escape`          | Close modals       |

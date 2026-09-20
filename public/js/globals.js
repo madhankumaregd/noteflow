@@ -261,6 +261,5 @@ const colorHistory = document.getElementById("colorHistory");
 
 
 
-const autoScrollSpeedInput = document.getElementById('autoScrollSpeedInput');
-const autoScrollSpeedDisplay = document.getElementById('autoScrollSpeedDisplay');
+const autoScrollSpeedSelect = document.getElementById('autoScrollSpeedSelect');
 

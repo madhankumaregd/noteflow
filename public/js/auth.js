@@ -375,7 +375,8 @@ profileThemeBtns.forEach(btn => {
 
 window.openSettingsPanel = function() {
   emptyState.style.display = "none";
-  // Don't hide editorPanel, let it stay under the overlay
+  if (typeof editorPanel !== 'undefined') editorPanel.style.display = "none";
+  if (typeof sketchAppContainer !== 'undefined') sketchAppContainer.style.display = "none";
   settingsPanel.style.display = "flex";
   if (window.innerWidth <= 768) sidebar.classList.remove("open");
 };

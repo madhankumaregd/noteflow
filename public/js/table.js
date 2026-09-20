@@ -62,6 +62,10 @@ tableGridPicker.addEventListener("mouseleave", () => {
 
 insertTableBtn.addEventListener("mousedown", (e) => e.preventDefault());
 insertTableBtn.addEventListener("click", () => {
+  // Save cursor position before opening modal
+  if (typeof saveSelection === "function") {
+    savedSelection = saveSelection();
+  }
   selectedRows = 0;
   selectedCols = 0;
   confirmTable.disabled = true;
@@ -79,6 +83,12 @@ tableModalOverlay.addEventListener("click", (e) => {
 
 confirmTable.addEventListener("click", () => {
   if (selectedRows < 1 || selectedCols < 1) return;
+  
+  // Restore cursor position before inserting
+  if (typeof restoreSelection === "function" && savedSelection) {
+    restoreSelection(savedSelection);
+  }
+  
   let html = '<table><tr>';
   for (let c = 0; c < selectedCols; c++) html += `<th>Header ${c + 1}</th>`;
   html += '</tr>';
@@ -98,6 +108,8 @@ confirmTable.addEventListener("click", () => {
    ============================================= */
 
 let draggedTable = null;
+let isDraggingTable = false;
+let dragGhost = null;
 
 function setupTableInteraction() {
   if (!noteContent) return;
@@ -107,43 +119,195 @@ function setupTableInteraction() {
     table.style.position = "relative";
     table.classList.remove("resizing"); // Ensure no stuck resizing state
     
+    // Fix legacy bug where table got stuck with contenteditable="false"
+    table.removeAttribute("contenteditable");
+    
     if (!table.__interactionReady) {
       table.__interactionReady = true;
       
       // Clean up dead handles from HTML
       table.querySelectorAll(".table-move-handle").forEach(el => el.remove());
+      table.querySelectorAll(".table-overall-resize-handle").forEach(el => el.remove());
       
       // Add move handle
       let moveHandle = document.createElement("div");
       moveHandle.className = "table-move-handle";
-      moveHandle.innerHTML = "⠿";
+      moveHandle.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;">drag_indicator</span>';
       moveHandle.contentEditable = "false";
-      moveHandle.draggable = true;
       table.insertBefore(moveHandle, table.firstChild);
       
-      // Drag to move table
-      moveHandle.addEventListener("dragstart", (e) => {
-        draggedTable = table;
-        e.dataTransfer.effectAllowed = "move";
-        e.dataTransfer.setData("text/html", table.outerHTML);
-        // Important: Use dragging class to disable pointer events on the table itself
-        setTimeout(() => { table.classList.add("dragging"); }, 0);
-      });
-      
-      moveHandle.addEventListener("dragend", (e) => {
-        table.classList.remove("dragging");
-        draggedTable = null;
-        autoSave();
-      });
-      
-      // Click handle to select table
+      // --- Move table via manual mouse drag (not HTML5 drag API) ---
       moveHandle.addEventListener("mousedown", (e) => {
         e.preventDefault();
         e.stopPropagation();
         
-        // Deselect others
-        noteContent.querySelectorAll("table.selected").forEach(t => t.classList.remove("selected"));
-        table.classList.toggle("selected");
+        isDraggingTable = true;
+        draggedTable = table;
+        table.classList.add("dragging");
+        
+        // Create a visual ghost
+        dragGhost = document.createElement("div");
+        dragGhost.style.cssText = "position:fixed;pointer-events:none;z-index:9999;opacity:0.5;border:2px dashed var(--accent);padding:4px 10px;background:var(--bg-card);border-radius:4px;font-size:12px;color:var(--text-muted);";
+        dragGhost.textContent = "Move table here";
+        document.body.appendChild(dragGhost);
+        dragGhost.style.left = e.clientX + 10 + "px";
+        dragGhost.style.top = e.clientY + 10 + "px";
+        
+        function onMouseMoveD(ev) {
+          if (dragGhost) {
+            dragGhost.style.left = ev.clientX + 10 + "px";
+            dragGhost.style.top = ev.clientY + 10 + "px";
+          }
+        }
+        
+        function onMouseUpD(ev) {
+          document.removeEventListener("mousemove", onMouseMoveD);
+          document.removeEventListener("mouseup", onMouseUpD);
+          
+          if (dragGhost) {
+            dragGhost.remove();
+            dragGhost = null;
+          }
+          
+          table.classList.remove("dragging");
+          isDraggingTable = false;
+          
+          // Find drop target
+          let range;
+          if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+          } else if (document.caretPositionFromPoint) {
+            const pos = document.caretPositionFromPoint(ev.clientX, ev.clientY);
+            if (pos) {
+              range = document.createRange();
+              range.setStart(pos.offsetNode, pos.offset);
+            }
+          }
+          
+          if (range) {
+            let targetNode = range.startContainer;
+            // Walk up to direct child of noteContent
+            while (targetNode && targetNode.parentNode !== noteContent) {
+              targetNode = targetNode.parentNode;
+            }
+            
+            // Don't insert table inside itself
+            if (targetNode && !table.contains(targetNode) && targetNode !== table) {
+              table.remove();
+              noteContent.insertBefore(table, targetNode);
+              
+              // Ensure space below
+              if (!table.nextSibling || (table.nextSibling.nodeType === 1 && table.nextSibling.tagName === "TABLE")) {
+                const p = document.createElement("div");
+                p.innerHTML = "<br/>";
+                noteContent.insertBefore(p, table.nextSibling);
+              }
+              // Ensure space above
+              if (!table.previousSibling || (table.previousSibling.nodeType === 1 && table.previousSibling.tagName === "TABLE")) {
+                const p = document.createElement("div");
+                p.innerHTML = "<br/>";
+                noteContent.insertBefore(p, table);
+              }
+              
+              autoSave();
+            }
+          }
+          
+          draggedTable = null;
+        }
+        
+        document.addEventListener("mousemove", onMouseMoveD);
+        document.addEventListener("mouseup", onMouseUpD);
+      });
+      
+      // Also support touch for mobile
+      moveHandle.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        isDraggingTable = true;
+        draggedTable = table;
+        table.classList.add("dragging");
+        
+        function onTouchMoveD(ev) {
+          ev.preventDefault();
+        }
+        
+        function onTouchEndD(ev) {
+          document.removeEventListener("touchmove", onTouchMoveD);
+          document.removeEventListener("touchend", onTouchEndD);
+          
+          table.classList.remove("dragging");
+          isDraggingTable = false;
+          
+          const touch = ev.changedTouches[0];
+          let range;
+          if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
+          }
+          
+          if (range) {
+            let targetNode = range.startContainer;
+            while (targetNode && targetNode.parentNode !== noteContent) {
+              targetNode = targetNode.parentNode;
+            }
+            
+            if (targetNode && !table.contains(targetNode) && targetNode !== table) {
+              table.remove();
+              noteContent.insertBefore(table, targetNode);
+              
+              if (!table.nextSibling || (table.nextSibling.nodeType === 1 && table.nextSibling.tagName === "TABLE")) {
+                const p = document.createElement("div");
+                p.innerHTML = "<br/>";
+                noteContent.insertBefore(p, table.nextSibling);
+              }
+              if (!table.previousSibling || (table.previousSibling.nodeType === 1 && table.previousSibling.tagName === "TABLE")) {
+                const p = document.createElement("div");
+                p.innerHTML = "<br/>";
+                noteContent.insertBefore(p, table);
+              }
+              
+              autoSave();
+            }
+          }
+          
+          draggedTable = null;
+        }
+        
+        document.addEventListener("touchmove", onTouchMoveD, { passive: false });
+        document.addEventListener("touchend", onTouchEndD);
+      }, { passive: false });
+      
+      // Add overall resize handle (mirrored icon pointing bottom-right)
+      let overallResizeHandle = document.createElement("div");
+      overallResizeHandle.className = "table-overall-resize-handle";
+      overallResizeHandle.innerHTML = '<span class="material-symbols-rounded" style="font-size:14px;transform:rotate(90deg);">open_in_full</span>';
+      overallResizeHandle.contentEditable = "false";
+      table.appendChild(overallResizeHandle);
+      
+      overallResizeHandle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const startW = table.offsetWidth;
+        const startH = table.offsetHeight;
+        
+        table.style.maxWidth = "none";
+        
+        function onMouseMoveT(ev) {
+          const dw = ev.clientX - startX;
+          const dh = ev.clientY - startY;
+          table.style.width = Math.max(100, startW + dw) + "px";
+          table.style.height = Math.max(50, startH + dh) + "px";
+        }
+        function onMouseUpT() {
+          document.removeEventListener("mousemove", onMouseMoveT);
+          document.removeEventListener("mouseup", onMouseUpT);
+          autoSave();
+        }
+        document.addEventListener("mousemove", onMouseMoveT);
+        document.addEventListener("mouseup", onMouseUpT);
       });
     }
     
@@ -179,32 +343,54 @@ function addResizeHandles(table) {
       const startWidth = cell.offsetWidth;
       table.classList.add("resizing");
       handle.classList.add("active");
-      table.contentEditable = "false"; // Prevent weird text selection while dragging
       
-      // Freeze table layout to fixed to make resizing accurate
-      if (window.getComputedStyle(table).tableLayout !== "fixed") {
-        const firstRowCells = table.querySelectorAll("tr:first-child > *");
-        firstRowCells.forEach(c => {
-            c.style.width = c.offsetWidth + "px";
-        });
-        table.style.tableLayout = "fixed";
-        table.style.width = table.offsetWidth + "px";
+      // Freeze all column widths BEFORE changing anything
+      const allCells = table.querySelectorAll("th, td");
+      allCells.forEach(c => {
+        if (!c.classList.contains("table-move-handle") && !c.classList.contains("table-overall-resize-handle")) {
+          c.style.width = c.offsetWidth + "px";
+          c.style.minWidth = c.offsetWidth + "px";
+        }
+      });
+      table.style.tableLayout = "fixed";
+      table.style.width = table.offsetWidth + "px";
+      
+      // Get correct column index (skip the move-handle div)
+      const parentRow = cell.parentElement;
+      let colIndex = 0;
+      for (let i = 0; i < parentRow.children.length; i++) {
+        const child = parentRow.children[i];
+        if (child === cell) break;
+        if (child.tagName === "TH" || child.tagName === "TD") {
+          colIndex++;
+        }
       }
       
-      // Get the column index
-      const colIndex = Array.from(cell.parentElement.children).indexOf(cell);
+      const tableStartWidth = table.offsetWidth;
       
       function onMouseMove(ev) {
-        const delta = ev.clientX - startX;
-        const newWidth = Math.max(40, startWidth + delta);
+        const rawDelta = ev.clientX - startX;
+        const newWidth = Math.max(40, startWidth + rawDelta);
+        const actualDelta = newWidth - startWidth; // Clamp delta so table and column stay in sync
         
-        // Apply to all cells in this column
+        // Update table overall width
+        table.style.width = Math.max(100, tableStartWidth + actualDelta) + "px";
+        table.style.maxWidth = "none";
+        
+        // Apply ONLY to cells in this column
         const allRows = table.querySelectorAll("tr");
         allRows.forEach(row => {
-          const targetCell = row.children[colIndex];
-          if (targetCell && !targetCell.classList.contains("table-move-handle")) {
-            targetCell.style.width = newWidth + "px";
-            targetCell.style.minWidth = newWidth + "px";
+          let ci = 0;
+          for (let i = 0; i < row.children.length; i++) {
+            const child = row.children[i];
+            if (child.tagName === "TH" || child.tagName === "TD") {
+              if (ci === colIndex) {
+                child.style.width = newWidth + "px";
+                child.style.minWidth = newWidth + "px";
+                break;
+              }
+              ci++;
+            }
           }
         });
       }
@@ -254,57 +440,5 @@ const tableObserver = new MutationObserver(() => {
 
 tableObserver.observe(noteContent, { childList: true, subtree: true });
 
-// Handle dropping the table within the editor
-noteContent.addEventListener("dragover", (e) => {
-  if (draggedTable) {
-    e.preventDefault(); // allow drop
-    e.dataTransfer.dropEffect = "move";
-  }
-});
-
-noteContent.addEventListener("drop", (e) => {
-  if (draggedTable) {
-    e.preventDefault();
-    
-    // Get drop position
-    let range;
-    if (document.caretRangeFromPoint) {
-      range = document.caretRangeFromPoint(e.clientX, e.clientY);
-    } else if (e.rangeParent) {
-      range = document.createRange();
-      range.setStart(e.rangeParent, e.rangeOffset);
-    }
-    
-    if (range) {
-      // Find the closest block element to insert before/after
-      let targetNode = range.startContainer;
-      while (targetNode && targetNode.parentNode !== noteContent) {
-        targetNode = targetNode.parentNode;
-      }
-      
-      // We don't want to insert the table inside itself!
-      if (targetNode && !draggedTable.contains(targetNode)) {
-        // Move the table
-        draggedTable.remove();
-        
-        if (targetNode.nextSibling) {
-            noteContent.insertBefore(draggedTable, targetNode.nextSibling);
-        } else {
-            noteContent.appendChild(draggedTable);
-        }
-        
-        // Ensure there is space around the table
-        if (!draggedTable.nextSibling || draggedTable.nextSibling.tagName !== "DIV") {
-            const p = document.createElement("div");
-            p.innerHTML = "<br/>";
-            noteContent.insertBefore(p, draggedTable.nextSibling);
-        }
-      }
-    }
-  }
-});
-
 // Initial setup
 setupTableInteraction();
-
-
