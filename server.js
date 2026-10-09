@@ -1398,6 +1398,44 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+/* =============================================
+   BACKGROUND TASKS
+   ============================================= */
+setInterval(async () => {
+  try {
+    const res = await turso.execute(`SELECT * FROM notes`);
+    const notes = res.rows;
+    const now = new Date().getTime();
+    
+    for (let note of notes) {
+      if (!note.settings) continue;
+      try {
+        const settings = JSON.parse(note.settings);
+        if (settings.autoDelete && settings.autoDelete.type === 'time' && settings.autoDelete.time) {
+          const deleteTime = new Date(settings.autoDelete.time).getTime();
+          if (now >= deleteTime) {
+            // Move to trash
+            await turso.execute({
+              sql: `INSERT OR REPLACE INTO trash (id, userId, title, content, tags, createdAt, deletedAt, settings) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              args: [note.id, note.userId, note.title, note.content, note.tags, note.createdAt, Date.now(), note.settings]
+            });
+            await turso.execute({
+              sql: `DELETE FROM notes WHERE id = ?`,
+              args: [note.id]
+            });
+            console.log(`Auto-deleted note ${note.id} due to time trigger.`);
+          }
+        }
+      } catch (e) {
+        // parsing error or other error, skip this note
+      }
+    }
+  } catch (error) {
+    console.error("Auto-delete cleanup task error:", error);
+  }
+}, 60000); // Check every minute
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Notes App running on http://localhost:${PORT}`);
   console.log(`🔧 Admin Panel at http://localhost:${PORT}/note-manager`);

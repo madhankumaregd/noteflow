@@ -243,9 +243,9 @@ async function createNote(template = 'blank', diaryName = '') {
 
   if (template === 'diary') {
     const name = diaryName || 'My Diary';
-    title = `${name} — ${dateStr}`;
+    title = name;
     content = `<p><strong>📅 ${dateStr}</strong> &nbsp; <em>${timeStr}</em></p><hr/><p><strong>${t('diaryReflectionHeading')}</strong></p><p><br/></p>`;
-    tags = [`📖 ${name}`];
+    tags = [`📖 ${name}`, `📅 ${dateStr}`];
   } else if (template === 'script') {
     title = 'Untitled Script';
     content = `<div class="script-mode"><p class="script-heading">UNTITLED SCREENPLAY</p><p class="script-slug">INT. LOCATION - DAY</p><p class="script-action">Description of the scene.</p><p class="script-character">CHARACTER NAME</p><p class="script-dialogue">Dialogue goes here.</p></div>`;
@@ -400,7 +400,7 @@ confirmLink.addEventListener("click", () => {
   if (!url) return;
   
   restoreSelection(savedSelection);
-  const html = `<a href="${url}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+  const html = `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ctrl+Click to open link" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">${text}</a>`;
   execCmd("insertHTML", html);
   linkModalOverlay.classList.remove("open");
 });
@@ -540,7 +540,11 @@ document.querySelectorAll('.new-note-dropdown-item').forEach(item => {
   });
 });
 
-newNoteBtnLg.addEventListener("click", () => createNote('blank'));
+if (typeof newNoteBtnLgBlank !== 'undefined' && newNoteBtnLgBlank) {
+  newNoteBtnLgBlank.addEventListener("click", () => createNote('blank'));
+  newNoteBtnLgDiary.addEventListener("click", () => createNote('diary', 'My Diary'));
+  newNoteBtnLgScript.addEventListener("click", () => createNote('script'));
+}
 // Diary Modal Logic
 diaryTypeNew.addEventListener('change', () => {
   if (diaryTypeNew.checked) {
@@ -620,9 +624,13 @@ window.openChecklistSettings = function(noteId) {
   const note = notes.find((n) => n.id === noteId);
   if (!note) return;
   const config = note.settings?.checklistRefresh || { type: 'none', days: [], time: '00:00' };
+  const autoDeleteConfig = note.settings?.autoDelete || { type: 'none', time: '' };
   
-  checklistRefreshType.value = config.type || 'none';
-  checklistRefreshTime.value = config.time || '00:00';
+  if (typeof checklistRefreshType !== 'undefined') checklistRefreshType.value = config.type || 'none';
+  if (typeof checklistRefreshTime !== 'undefined') checklistRefreshTime.value = config.time || '00:00';
+  
+  if (typeof autoDeleteSelect !== 'undefined') autoDeleteSelect.value = autoDeleteConfig.type || 'none';
+  if (typeof autoDeleteTime !== 'undefined') autoDeleteTime.value = autoDeleteConfig.time || '';
   
   const daysButtons = checklistRefreshDays.querySelectorAll('.tag-pill');
   daysButtons.forEach(btn => {
@@ -654,9 +662,18 @@ function updateChecklistSettingsUI() {
     checklistRefreshDaysGroup.style.display = 'block';
     checklistRefreshTimeGroup.style.display = 'block';
   }
+  
+  if (typeof autoDeleteSelect !== 'undefined') {
+    if (autoDeleteSelect.value === 'time') {
+      autoDeleteTimeGroup.style.display = 'block';
+    } else {
+      autoDeleteTimeGroup.style.display = 'none';
+    }
+  }
 }
 
 checklistRefreshType.addEventListener("change", updateChecklistSettingsUI);
+if (typeof autoDeleteSelect !== 'undefined') autoDeleteSelect.addEventListener("change", updateChecklistSettingsUI);
 
 checklistRefreshDays.addEventListener("click", (e) => {
   if (e.target.classList.contains('tag-pill')) {
@@ -684,10 +701,16 @@ saveChecklistSettings.addEventListener("click", () => {
     lastRefreshed: Date.now()
   };
   
+  const autoDelConfig = {
+    type: typeof autoDeleteSelect !== 'undefined' ? autoDeleteSelect.value : 'none',
+    time: typeof autoDeleteTime !== 'undefined' ? autoDeleteTime.value : ''
+  };
+  
   const note = notes.find((n) => n.id === activeNoteId);
   if (note) {
     if (!note.settings) note.settings = {};
     note.settings.checklistRefresh = config;
+    note.settings.autoDelete = autoDelConfig;
   }
   
   if (typeof autoScrollSpeedSelect !== 'undefined' && autoScrollSpeedSelect) {
@@ -731,6 +754,17 @@ noteContent.addEventListener("change", (e) => {
         const allChecked = Array.from(allCheckboxes).every(cb => cb.checked || cb.getAttribute('checked') === 'checked');
         if (allChecked) {
           showToast("All checklists completed in this note!");
+          
+          // Check for Auto-delete
+          const note = notes.find(n => n.id === activeNoteId);
+          if (note && note.settings && note.settings.autoDelete && note.settings.autoDelete.type === 'checklist') {
+            showToast("Auto-deleting note (checklist completed)...");
+            setTimeout(() => {
+              if (typeof trashNote === 'function') {
+                trashNote(activeNoteId);
+              }
+            }, 1500);
+          }
         }
       }
       
@@ -818,9 +852,10 @@ setTimeout(processChecklistRefreshes, 5000);
 
 searchInput.addEventListener("input", () => renderNotesList());
 
-deleteNoteBtn.addEventListener("click", () =>
-  modalOverlay.classList.add("open"),
-);
+deleteNoteBtn.addEventListener("click", () => modalOverlay.classList.add("open"));
+if (typeof deleteNoteHeaderBtn !== 'undefined' && deleteNoteHeaderBtn) {
+  deleteNoteHeaderBtn.addEventListener("click", () => modalOverlay.classList.add("open"));
+}
 cancelDelete.addEventListener("click", () =>
   modalOverlay.classList.remove("open"),
 );
@@ -875,9 +910,15 @@ document.addEventListener('touchend', e => {
 });
 
 document.addEventListener("keydown", (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === "n") {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n") {
     e.preventDefault();
     createNote();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+    e.preventDefault();
+    if (typeof insertLinkBtn !== 'undefined' && insertLinkBtn) {
+      insertLinkBtn.click();
+    }
   }
   if (e.key === "Escape") {
     modalOverlay.classList.remove("open");
@@ -888,6 +929,75 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
+
+/* =============================================
+   IN-NOTE SEARCH
+   ============================================= */
+let searchMatchCount = 0;
+
+const sBtn = document.getElementById('searchNoteBtn');
+const sBar = document.getElementById('inNoteSearchBar');
+const sInput = document.getElementById('inNoteSearchInput');
+const sCount = document.getElementById('inNoteSearchCount');
+const sNext = document.getElementById('inNoteSearchNext');
+const sPrev = document.getElementById('inNoteSearchPrev');
+const sClose = document.getElementById('inNoteSearchClose');
+
+if (sBtn && sBar) {
+  sBtn.addEventListener('click', () => {
+    sBar.style.display = sBar.style.display === 'none' ? 'flex' : 'none';
+    if (sBar.style.display === 'flex') {
+      sInput.focus();
+    }
+  });
+
+  const updateSearchCount = () => {
+    const term = sInput.value;
+    if (!term) {
+      if (sCount) sCount.textContent = '0 found';
+      return;
+    }
+    const text = document.getElementById('noteContent').textContent || '';
+    const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+    const matches = text.match(regex);
+    searchMatchCount = matches ? matches.length : 0;
+    if (sCount) sCount.textContent = `${searchMatchCount} found`;
+  };
+
+  sInput.addEventListener('input', updateSearchCount);
+
+  sNext.addEventListener('click', () => {
+    const term = sInput.value;
+    if (term) {
+      window.find(term, false, false, true, false, false, false);
+    }
+  });
+
+  sPrev.addEventListener('click', () => {
+    const term = sInput.value;
+    if (term) {
+      window.find(term, false, true, true, false, false, false);
+    }
+  });
+
+  sClose.addEventListener('click', () => {
+    sBar.style.display = 'none';
+    window.getSelection().removeAllRanges(); 
+  });
+  
+  sInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      if (e.shiftKey) {
+        sPrev.click();
+      } else {
+        sNext.click();
+      }
+    }
+    if (e.key === 'Escape') {
+      sClose.click();
+    }
+  });
+}
 
 /* =============================================
    START

@@ -26,6 +26,7 @@ window.exitReadingMode = function() {
   readingModeBtn.classList.remove("active");
   stopAutoScroll();
   stopSpeaking();
+  if (isBookView) toggleBookView();
 };
 
 function toggleReadingMode() {
@@ -48,6 +49,44 @@ exitReadingBtn.addEventListener("click", () => {
   if (activeNoteId) window.Router.navigate(`/notes`);
   else window.Router.navigate(`/`);
 });
+
+let isBookView = false;
+
+function toggleBookView() {
+  isBookView = !isBookView;
+  if (isBookView) {
+    noteContent.classList.add('book-view');
+    if (bookViewBtn) bookViewBtn.classList.add('active');
+    if (bookPrevBtn) bookPrevBtn.style.display = 'flex';
+    if (bookNextBtn) bookNextBtn.style.display = 'flex';
+    noteContent.scrollLeft = 0;
+    
+    // Disable auto scroll in book view
+    if (isAutoScrolling) stopAutoScroll();
+  } else {
+    noteContent.classList.remove('book-view');
+    if (bookViewBtn) bookViewBtn.classList.remove('active');
+    if (bookPrevBtn) bookPrevBtn.style.display = 'none';
+    if (bookNextBtn) bookNextBtn.style.display = 'none';
+    noteContent.scrollLeft = 0;
+  }
+}
+
+if (bookViewBtn) bookViewBtn.addEventListener('click', toggleBookView);
+
+if (bookPrevBtn) {
+  bookPrevBtn.addEventListener('click', () => {
+    // Turn page backwards
+    noteContent.scrollBy({ left: -noteContent.clientWidth, behavior: 'smooth' });
+  });
+}
+
+if (bookNextBtn) {
+  bookNextBtn.addEventListener('click', () => {
+    // Turn page forwards
+    noteContent.scrollBy({ left: noteContent.clientWidth, behavior: 'smooth' });
+  });
+}
 
 function toggleAutoScroll() {
   if (!isAutoScrolling) {

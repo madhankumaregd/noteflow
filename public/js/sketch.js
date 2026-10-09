@@ -5,7 +5,7 @@
 let isSketching = false;
 let sketchCtx = null;
 let currentTool = 'pen'; // pen, bucket, text, eraser, picker
-let currentBrush = 'solid'; // solid, marker, spray
+let currentBrush = 'brush'; // solid, marker, spray
 let currentShape = null; // line, arrow, rect, circle, triangle, star
 let activeColorTarget = 1; // 1 or 2
 let color1 = '#e8b86d';
@@ -18,6 +18,38 @@ let startX = 0;
 let startY = 0;
 let savedCanvasState = null;
 let editingImageNode = null;
+let undoStack = [];
+let redoStack = [];
+
+function saveCanvasState() {
+  if (!sketchCanvas) return;
+  undoStack.push(sketchCanvas.toDataURL());
+  if (undoStack.length > 50) undoStack.shift();
+  redoStack = [];
+}
+
+function undoCanvas() {
+  if (undoStack.length === 0) return;
+  redoStack.push(sketchCanvas.toDataURL());
+  const state = undoStack.pop();
+  restoreCanvasState(state);
+}
+
+function redoCanvas() {
+  if (redoStack.length === 0) return;
+  undoStack.push(sketchCanvas.toDataURL());
+  const state = redoStack.pop();
+  restoreCanvasState(state);
+}
+
+function restoreCanvasState(state) {
+  const img = new Image();
+  img.onload = () => {
+    sketchCtx.clearRect(0, 0, sketchCanvas.width, sketchCanvas.height);
+    sketchCtx.drawImage(img, 0, 0);
+  };
+  img.src = state;
+}
 
 // Initialize
 function initSketchCanvas(imgNode = null) {
@@ -46,6 +78,7 @@ function initSketchCanvas(imgNode = null) {
 
 function clearSketchCanvas() {
   if (!sketchCtx) return;
+  saveCanvasState();
   sketchCtx.fillStyle = '#1c1a18';
   sketchCtx.fillRect(0, 0, sketchCanvas.width, sketchCanvas.height);
 }
@@ -114,12 +147,28 @@ if (sketchSizeSliderMobile) sketchSizeSliderMobile.addEventListener('input', (e)
 if (sketchOpacitySliderDesktop) sketchOpacitySliderDesktop.addEventListener('input', (e) => updateOpacity(e.target.value));
 if (sketchOpacitySliderMobile) sketchOpacitySliderMobile.addEventListener('input', (e) => updateOpacity(e.target.value));
 
-if (sketchSlidersBtn && sketchSlidersDropdown) {
-  sketchSlidersBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    sketchSlidersDropdown.style.display = sketchSlidersDropdown.style.display === 'block' ? 'none' : 'block';
-  });
-}
+// Removed separate eraser size slider
+
+const sketchUndoBtn = document.getElementById('sketchUndoBtn');
+const sketchRedoBtn = document.getElementById('sketchRedoBtn');
+if (sketchUndoBtn) sketchUndoBtn.addEventListener('click', undoCanvas);
+if (sketchRedoBtn) sketchRedoBtn.addEventListener('click', redoCanvas);
+
+document.addEventListener('keydown', (e) => {
+  const sketchOverlay = document.getElementById('sketchOverlay');
+  if (sketchOverlay && sketchOverlay.style.display !== 'none') {
+    if (e.ctrlKey && e.key === 'z') {
+      e.preventDefault();
+      undoCanvas();
+    }
+    if (e.ctrlKey && (e.key === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+      e.preventDefault();
+      redoCanvas();
+    }
+  }
+});
+
+// Removed sketchSlidersBtn dropdown
 
 sketchBrushBtn.addEventListener('click', (e) => {
   e.stopPropagation();
@@ -130,8 +179,8 @@ document.addEventListener('click', (e) => {
   if (!sketchBrushBtn.contains(e.target) && sketchBrushDropdown) {
     sketchBrushDropdown.style.display = 'none';
   }
-  if (sketchSlidersBtn && sketchSlidersDropdown && !sketchSlidersBtn.contains(e.target) && !sketchSlidersDropdown.contains(e.target)) {
-    sketchSlidersDropdown.style.display = 'none';
+  if (sketchBrushBtn && sketchBrushDropdown && !sketchBrushBtn.contains(e.target) && !sketchBrushDropdown.contains(e.target)) {
+    sketchBrushDropdown.style.display = 'none';
   }
   const mobileColorToggleBtn = document.getElementById('mobileColorToggleBtn');
   const colorPopupContainer = document.getElementById('colorPopupContainer');
@@ -199,6 +248,7 @@ function startSketch(e) {
   const { x, y } = getCoords(e);
   
   if (currentTool === 'text') {
+    saveCanvasState();
     sketchTextInput.style.left = `${x}px`;
     sketchTextInput.style.top = `${y - 10}px`;
     sketchTextInput.style.display = 'block';
@@ -215,9 +265,12 @@ function startSketch(e) {
   }
 
   if (currentTool === 'bucket') {
+    saveCanvasState();
     floodFill(Math.floor(x), Math.floor(y), hexToRgba(color1));
     return;
   }
+
+  saveCanvasState();
 
   isSketching = true;
   startX = lastX = x;
@@ -247,9 +300,10 @@ function drawSketch(e) {
     
     if (currentTool === 'eraser') {
       sketchCtx.globalCompositeOperation = 'source-over';
+      sketchCtx.globalCompositeOperation = 'source-over';
       sketchCtx.globalAlpha = 1.0;
       sketchCtx.strokeStyle = color2;
-      sketchCtx.lineWidth = sketchSize * 2;
+      sketchCtx.lineWidth = sketchSize * 3;
       sketchCtx.lineCap = 'round';
       sketchCtx.lineJoin = 'round';
       sketchCtx.beginPath();

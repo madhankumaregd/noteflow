@@ -3,11 +3,18 @@
    ============================================= */
 let selectedRows = 0;
 let selectedCols = 0;
+let visualMaxRows = 8;
+let visualMaxCols = 8;
 
-function buildTableGrid() {
+function buildTableGrid(maxR = 8, maxC = 8) {
+  visualMaxRows = Math.max(8, Math.min(20, maxR));
+  visualMaxCols = Math.max(8, Math.min(20, maxC));
   tableGridPicker.innerHTML = "";
-  for (let r = 1; r <= 8; r++) {
-    for (let c = 1; c <= 8; c++) {
+  
+  tableGridPicker.style.gridTemplateColumns = `repeat(${visualMaxCols}, 1fr)`;
+  
+  for (let r = 1; r <= visualMaxRows; r++) {
+    for (let c = 1; c <= visualMaxCols; c++) {
       const cell = document.createElement("div");
       cell.className = "table-grid-cell";
       cell.dataset.row = r;
@@ -24,6 +31,8 @@ tableGridPicker.addEventListener("mouseover", (e) => {
   const hoverRow = parseInt(cell.dataset.row);
   const hoverCol = parseInt(cell.dataset.col);
   highlightGridCells(hoverRow, hoverCol);
+  
+  // Do not override user-typed custom values unless they are clicking/hovering grid to set
   tableSizeLabel.textContent = `${hoverRow} × ${hoverCol}`;
 });
 
@@ -34,6 +43,10 @@ tableGridPicker.addEventListener("click", (e) => {
   selectedCols = parseInt(cell.dataset.col);
   highlightGridCells(selectedRows, selectedCols, true);
   tableSizeLabel.textContent = `${selectedRows} × ${selectedCols} selected`;
+  
+  if (typeof customTableCols !== 'undefined') customTableCols.value = selectedCols;
+  if (typeof customTableRows !== 'undefined') customTableRows.value = selectedRows;
+  
   confirmTable.disabled = false;
 });
 
@@ -73,8 +86,45 @@ insertTableBtn.addEventListener("click", () => {
   tableGridPicker.querySelectorAll(".table-grid-cell").forEach((c) =>
     c.classList.remove("selected", "selected-highlight")
   );
+  if (typeof customTableCols !== 'undefined') {
+    customTableCols.value = "";
+    customTableCols.addEventListener("input", handleCustomDimensionInput);
+  }
+  if (typeof customTableRows !== 'undefined') {
+    customTableRows.value = "";
+    customTableRows.addEventListener("input", handleCustomDimensionInput);
+  }
+  
   tableModalOverlay.classList.add("open");
 });
+
+function handleCustomDimensionInput() {
+  let c = parseInt(customTableCols.value) || 0;
+  let r = parseInt(customTableRows.value) || 0;
+  
+  if (c > 100) { c = 100; customTableCols.value = 100; }
+  
+  selectedCols = c;
+  selectedRows = r;
+  
+  if (c > visualMaxCols || r > visualMaxRows) {
+    buildTableGrid(r, c);
+  } else if (c <= 8 && r <= 8 && (visualMaxCols > 8 || visualMaxRows > 8)) {
+    buildTableGrid(8, 8);
+  }
+  
+  if (selectedRows > 0 && selectedCols > 0) {
+    highlightGridCells(selectedRows, selectedCols, true);
+    tableSizeLabel.textContent = `${selectedRows} × ${selectedCols} selected`;
+    confirmTable.disabled = false;
+  } else {
+    tableGridPicker.querySelectorAll(".table-grid-cell").forEach((c) =>
+      c.classList.remove("selected", "selected-highlight")
+    );
+    tableSizeLabel.textContent = "Select size";
+    confirmTable.disabled = true;
+  }
+}
 
 cancelTable.addEventListener("click", () => tableModalOverlay.classList.remove("open"));
 tableModalOverlay.addEventListener("click", (e) => {
@@ -136,48 +186,61 @@ function setupTableInteraction() {
       moveHandle.contentEditable = "false";
       table.insertBefore(moveHandle, table.firstChild);
       
-      // --- Move table via manual mouse drag (not HTML5 drag API) ---
-      moveHandle.addEventListener("mousedown", (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        
+      // --- Enhanced Table Drag UX (Dynamic Content Movement & Auto-scroll) ---
+      function initTableDrag(startX, startY, isTouch) {
         isDraggingTable = true;
         draggedTable = table;
         table.classList.add("dragging");
         
-        // Create a visual ghost
+        // Hide the actual table so we can see the placeholder push content around
+        table.style.display = 'none';
+
+        // Create a visual ghost following the cursor
         dragGhost = document.createElement("div");
-        dragGhost.style.cssText = "position:fixed;pointer-events:none;z-index:9999;opacity:0.5;border:2px dashed var(--accent);padding:4px 10px;background:var(--bg-card);border-radius:4px;font-size:12px;color:var(--text-muted);";
-        dragGhost.textContent = "Move table here";
+        dragGhost.style.cssText = "position:fixed;pointer-events:none;z-index:9999;opacity:0.9;border:2px solid var(--accent);padding:8px 12px;background:var(--bg-card);border-radius:4px;font-size:13px;color:var(--text-primary);box-shadow: 0 8px 24px rgba(0,0,0,0.2);display:flex;align-items:center;gap:8px;";
+        dragGhost.innerHTML = '<span class="material-symbols-rounded" style="font-size:16px;color:var(--accent);">table</span> Moving Table...';
         document.body.appendChild(dragGhost);
-        dragGhost.style.left = e.clientX + 10 + "px";
-        dragGhost.style.top = e.clientY + 10 + "px";
         
-        function onMouseMoveD(ev) {
-          if (dragGhost) {
-            dragGhost.style.left = ev.clientX + 10 + "px";
-            dragGhost.style.top = ev.clientY + 10 + "px";
-          }
+        dragGhost.style.left = startX + 15 + "px";
+        dragGhost.style.top = startY + 15 + "px";
+
+        // Create the dynamic insertion placeholder
+        let dragPlaceholder = document.createElement("div");
+        dragPlaceholder.style.cssText = `height:${table.offsetHeight}px; width:100%; border:2px dashed var(--accent); background:rgba(45, 212, 191, 0.05); margin: 12px 0; border-radius: 4px; pointer-events:none;`;
+        noteContent.insertBefore(dragPlaceholder, table);
+        
+        let scrollInterval = null;
+
+        function doScroll(dir) {
+          if (!isDraggingTable) return;
+          noteContent.scrollTop += dir * 20;
         }
-        
-        function onMouseUpD(ev) {
-          document.removeEventListener("mousemove", onMouseMoveD);
-          document.removeEventListener("mouseup", onMouseUpD);
+
+        function handleMove(clientX, clientY) {
+          if (!isDraggingTable) return;
           
           if (dragGhost) {
-            dragGhost.remove();
-            dragGhost = null;
+            dragGhost.style.left = clientX + 15 + "px";
+            dragGhost.style.top = clientY + 15 + "px";
           }
           
-          table.classList.remove("dragging");
-          isDraggingTable = false;
+          // Auto-scroll logic
+          const rect = noteContent.getBoundingClientRect();
+          const edgeThreshold = 60;
           
-          // Find drop target
+          clearInterval(scrollInterval);
+          if (clientY - rect.top < edgeThreshold) {
+            scrollInterval = setInterval(() => doScroll(-1), 30);
+          } else if (rect.bottom - clientY < edgeThreshold) {
+            scrollInterval = setInterval(() => doScroll(1), 30);
+          }
+          
+          // Dynamic content movement (move placeholder)
           let range;
           if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(ev.clientX, ev.clientY);
+            range = document.caretRangeFromPoint(clientX, clientY);
           } else if (document.caretPositionFromPoint) {
-            const pos = document.caretPositionFromPoint(ev.clientX, ev.clientY);
+            const pos = document.caretPositionFromPoint(clientX, clientY);
             if (pos) {
               range = document.createRange();
               range.setStart(pos.offsetNode, pos.offset);
@@ -186,96 +249,81 @@ function setupTableInteraction() {
           
           if (range) {
             let targetNode = range.startContainer;
-            // Walk up to direct child of noteContent
             while (targetNode && targetNode.parentNode !== noteContent) {
               targetNode = targetNode.parentNode;
             }
-            
-            // Don't insert table inside itself
-            if (targetNode && !table.contains(targetNode) && targetNode !== table) {
-              table.remove();
-              noteContent.insertBefore(table, targetNode);
-              
-              // Ensure space below
-              if (!table.nextSibling || (table.nextSibling.nodeType === 1 && table.nextSibling.tagName === "TABLE")) {
-                const p = document.createElement("div");
-                p.innerHTML = "<br/>";
-                noteContent.insertBefore(p, table.nextSibling);
-              }
-              // Ensure space above
-              if (!table.previousSibling || (table.previousSibling.nodeType === 1 && table.previousSibling.tagName === "TABLE")) {
-                const p = document.createElement("div");
-                p.innerHTML = "<br/>";
-                noteContent.insertBefore(p, table);
-              }
-              
-              autoSave();
+            if (targetNode && targetNode !== dragPlaceholder && targetNode !== table) {
+               noteContent.insertBefore(dragPlaceholder, targetNode);
             }
           }
+        }
+        
+        function handleEnd() {
+          if (!isTouch) {
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          } else {
+            document.removeEventListener("touchmove", onTouchMove);
+            document.removeEventListener("touchend", onTouchEnd);
+          }
           
+          clearInterval(scrollInterval);
+          
+          if (dragGhost) {
+            dragGhost.remove();
+            dragGhost = null;
+          }
+          
+          table.classList.remove("dragging");
+          table.style.display = '';
+          isDraggingTable = false;
+          
+          if (dragPlaceholder && dragPlaceholder.parentNode) {
+            noteContent.insertBefore(table, dragPlaceholder);
+            dragPlaceholder.remove();
+            
+            if (!table.nextSibling || (table.nextSibling.nodeType === 1 && table.nextSibling.tagName === "TABLE")) {
+              const p = document.createElement("div");
+              p.innerHTML = "<br/>";
+              noteContent.insertBefore(p, table.nextSibling);
+            }
+            if (!table.previousSibling || (table.previousSibling.nodeType === 1 && table.previousSibling.tagName === "TABLE")) {
+              const p = document.createElement("div");
+              p.innerHTML = "<br/>";
+              noteContent.insertBefore(p, table);
+            }
+            autoSave();
+          }
           draggedTable = null;
         }
         
-        document.addEventListener("mousemove", onMouseMoveD);
-        document.addEventListener("mouseup", onMouseUpD);
+        function onMouseMove(ev) { handleMove(ev.clientX, ev.clientY); }
+        function onMouseUp(ev) { handleEnd(); }
+        function onTouchMove(ev) { 
+          ev.preventDefault();
+          handleMove(ev.changedTouches[0].clientX, ev.changedTouches[0].clientY); 
+        }
+        function onTouchEnd(ev) { handleEnd(); }
+
+        if (!isTouch) {
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        } else {
+          document.addEventListener("touchmove", onTouchMove, { passive: false });
+          document.addEventListener("touchend", onTouchEnd);
+        }
+      }
+
+      moveHandle.addEventListener("mousedown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        initTableDrag(e.clientX, e.clientY, false);
       });
       
-      // Also support touch for mobile
       moveHandle.addEventListener("touchstart", (e) => {
         e.preventDefault();
         e.stopPropagation();
-        
-        isDraggingTable = true;
-        draggedTable = table;
-        table.classList.add("dragging");
-        
-        function onTouchMoveD(ev) {
-          ev.preventDefault();
-        }
-        
-        function onTouchEndD(ev) {
-          document.removeEventListener("touchmove", onTouchMoveD);
-          document.removeEventListener("touchend", onTouchEndD);
-          
-          table.classList.remove("dragging");
-          isDraggingTable = false;
-          
-          const touch = ev.changedTouches[0];
-          let range;
-          if (document.caretRangeFromPoint) {
-            range = document.caretRangeFromPoint(touch.clientX, touch.clientY);
-          }
-          
-          if (range) {
-            let targetNode = range.startContainer;
-            while (targetNode && targetNode.parentNode !== noteContent) {
-              targetNode = targetNode.parentNode;
-            }
-            
-            if (targetNode && !table.contains(targetNode) && targetNode !== table) {
-              table.remove();
-              noteContent.insertBefore(table, targetNode);
-              
-              if (!table.nextSibling || (table.nextSibling.nodeType === 1 && table.nextSibling.tagName === "TABLE")) {
-                const p = document.createElement("div");
-                p.innerHTML = "<br/>";
-                noteContent.insertBefore(p, table.nextSibling);
-              }
-              if (!table.previousSibling || (table.previousSibling.nodeType === 1 && table.previousSibling.tagName === "TABLE")) {
-                const p = document.createElement("div");
-                p.innerHTML = "<br/>";
-                noteContent.insertBefore(p, table);
-              }
-              
-              autoSave();
-            }
-          }
-          
-          draggedTable = null;
-        }
-        
-        document.addEventListener("touchmove", onTouchMoveD, { passive: false });
-        document.addEventListener("touchend", onTouchEndD);
+        initTableDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY, true);
       }, { passive: false });
       
       // Add overall resize handle (mirrored icon pointing bottom-right)

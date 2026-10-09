@@ -82,8 +82,11 @@ const deleteNoteBtn = document.getElementById("deleteNoteBtn");
 const modalOverlay = document.getElementById("modalOverlay");
 const cancelDelete = document.getElementById("cancelDelete");
 const confirmDelete = document.getElementById("confirmDelete");
+const deleteNoteHeaderBtn = document.getElementById("deleteNoteHeaderBtn");
 const newNoteBtn = document.getElementById("newNoteBtn");
-const newNoteBtnLg = document.getElementById("newNoteBtnLg");
+const newNoteBtnLgBlank = document.getElementById("newNoteBtnLgBlank");
+const newNoteBtnLgDiary = document.getElementById("newNoteBtnLgDiary");
+const newNoteBtnLgScript = document.getElementById("newNoteBtnLgScript");
 const mobileToggle = document.getElementById("mobileToggle");
 const sidebar = document.getElementById("sidebar");
 const addChecklistBtn = document.getElementById("addChecklistBtn");
@@ -140,9 +143,13 @@ const inNoteSearchInput = document.getElementById("inNoteSearchInput");
 const inNoteSearchPrev = document.getElementById("inNoteSearchPrev");
 const inNoteSearchNext = document.getElementById("inNoteSearchNext");
 const inNoteSearchClose = document.getElementById("inNoteSearchClose");
+const inNoteSearchCount = document.getElementById("inNoteSearchCount");
 const readingModeBtn = document.getElementById("readingModeBtn");
 const exitReadingBtn = document.getElementById("exitReadingBtn");
 const readingBar = document.getElementById("readingBar");
+const bookViewBtn = document.getElementById("bookViewBtn");
+const bookPrevBtn = document.getElementById("bookPrevBtn");
+const bookNextBtn = document.getElementById("bookNextBtn");
 const autoScrollBtn = document.getElementById("autoScrollBtn");
 const autoScrollIcon = document.getElementById("autoScrollIcon");
 const speakBtn = document.getElementById("speakBtn");
@@ -164,6 +171,8 @@ const tableGridPicker = document.getElementById("tableGridPicker");
 const tableSizeLabel = document.getElementById("tableSizeLabel");
 const cancelTable = document.getElementById("cancelTable");
 const confirmTable = document.getElementById("confirmTable");
+const customTableCols = document.getElementById("customTableCols");
+const customTableRows = document.getElementById("customTableRows");
 
 const insertLinkBtn = document.getElementById("insertLinkBtn");
 const linkModalOverlay = document.getElementById("linkModalOverlay");
@@ -261,5 +270,7 @@ const colorHistory = document.getElementById("colorHistory");
 
 
 
-const autoScrollSpeedSelect = document.getElementById('autoScrollSpeedSelect');
-
+const autoScrollSpeedSelect = document.getElementById("autoScrollSpeedSelect");
+const autoDeleteSelect = document.getElementById("autoDeleteSelect");
+const autoDeleteTimeGroup = document.getElementById("autoDeleteTimeGroup");
+const autoDeleteTime = document.getElementById("autoDeleteTime");

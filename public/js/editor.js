@@ -30,7 +30,6 @@ fontSizeSelect.addEventListener("change", () => {
 
 headingSelect.addEventListener("change", () => {
   execCmd("formatBlock", headingSelect.value);
-  headingSelect.value = "p";
 });
 
 textColorPicker.addEventListener("input", (e) => {
@@ -85,6 +84,19 @@ function updateToolbarState() {
   if (currentSize && currentSize !== "false") {
     fontSizeSelect.value = currentSize;
   }
+
+  const currentBlock = document.queryCommandValue("formatBlock");
+  if (currentBlock) {
+    // browsers sometimes return "h1", "H1", "Heading 1", or even empty
+    let cleanBlock = currentBlock.toLowerCase().replace(/["']/g, '');
+    if (cleanBlock === 'p' || cleanBlock === 'h1' || cleanBlock === 'h2' || cleanBlock === 'h3' || cleanBlock === 'h4' || cleanBlock === 'h5' || cleanBlock === 'h6') {
+      headingSelect.value = cleanBlock;
+    } else {
+      headingSelect.value = "p";
+    }
+  } else {
+    headingSelect.value = "p";
+  }
 }
 
 document.addEventListener("selectionchange", () => {
@@ -94,4 +106,15 @@ document.addEventListener("selectionchange", () => {
 });
 noteContent.addEventListener("keyup", updateToolbarState);
 
-
+noteContent.addEventListener("click", (e) => {
+  let target = e.target;
+  while (target && target !== noteContent) {
+    if (target.tagName === 'A') {
+      if (e.ctrlKey || e.metaKey) {
+        window.open(target.href, '_blank');
+      }
+      break;
+    }
+    target = target.parentElement;
+  }
+});

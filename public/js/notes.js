@@ -58,10 +58,9 @@ function renderNotesList() {
 
     card.innerHTML = `
       <div class="note-card-title">${escapeHtml(note.title) || "Untitled"}</div>
-      <div class="note-card-preview">${escapeHtml(plainTextPreview) || "No content yet..."}</div>
+      <div class="note-card-tags" style="margin: 6px 0;">${tagsHtml}</div>
       <div class="note-card-meta">
         <span class="note-card-date">${formatDate(note.updatedAt)}</span>
-        <div class="note-card-tags">${tagsHtml}</div>
       </div>
     `;
 
