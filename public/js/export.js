@@ -94,7 +94,7 @@ exportDownloadDocx.addEventListener('click', () => {
   const title = note.title || 'Untitled';
   const preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Export HTML To Doc</title></head><body>";
   const postHtml = "</body></html>";
-  const html = preHtml + `<h1>${title}</h1>` + noteContent.innerHTML + postHtml;
+  const html = preHtml + `<h1>${title}</h1>` + (note.content || noteContent.innerHTML) + postHtml;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
   triggerDownload(blob, `${getSanitizedTitle(title)}.doc`);
   exportDropdown.classList.remove('open');
@@ -121,7 +121,7 @@ exportDownloadPdf.addEventListener('click', async () => {
 
   const title = note.title || 'Untitled';
   const element = document.createElement('div');
-  element.innerHTML = `<h1>${title}</h1>` + noteContent.innerHTML;
+  element.innerHTML = `<h1>${title}</h1>` + (note.content || noteContent.innerHTML);
   element.style.padding = '20px';
   element.style.fontFamily = 'sans-serif';
 

@@ -65,6 +65,8 @@ let notes = [];
 let activeNoteId = localStorage.getItem('lastActiveNoteId') || null;
 let activeTag = "all";
 let saveTimeout = null;
+var isDraggingTable = false;
+var isDraggingImage = false;
 
 /* ---- DOM REFS ---- */
 const notesList = document.getElementById("notesList");
@@ -91,7 +93,8 @@ const mobileToggle = document.getElementById("mobileToggle");
 const sidebar = document.getElementById("sidebar");
 const addChecklistBtn = document.getElementById("addChecklistBtn");
 
-const checklistSettingsBtn = document.getElementById("checklistSettingsBtn");
+const checklistSettingsBtnDesktop = document.getElementById("checklistSettingsBtnDesktop");
+const checklistSettingsBtnMobile = document.getElementById("checklistSettingsBtnMobile");
 const checklistSettingsModalOverlay = document.getElementById("checklistSettingsModalOverlay");
 const checklistRefreshType = document.getElementById("checklistRefreshType");
 const checklistRefreshDaysGroup = document.getElementById("checklistRefreshDaysGroup");

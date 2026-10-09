@@ -1309,7 +1309,8 @@ body {
   cursor: col-resize;
 }
 
-.note-textarea table.dragging {
+.note-textarea table.dragging,
+.note-textarea .img-drag-container.dragging {
   opacity: 0.4;
   pointer-events: none;
 }
@@ -1366,12 +1367,15 @@ body {
 .note-textarea table:hover > .table-move-handle,
 .note-textarea table.selected > .table-move-handle,
 .note-textarea table:hover > .table-overall-resize-handle,
-.note-textarea table.selected > .table-overall-resize-handle {
+.note-textarea table.selected > .table-overall-resize-handle,
+.note-textarea .img-drag-container:hover > .table-move-handle,
+.note-textarea .img-drag-container.selected > .table-move-handle {
   opacity: 1;
   pointer-events: auto;
 }
 
-.note-textarea table.selected {
+.note-textarea table.selected,
+.note-textarea .img-drag-container.selected {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
@@ -3528,5 +3532,126 @@ body.reading-mode .mobile-toggle {
 
 
 
+
+
+
+/* ---- Settings Gear Responsive ---- */
+.settings-gear-mobile { display: none !important; }
+.settings-gear-desktop { display: inline-flex; }
+@media (max-width: 768px) {
+  .settings-gear-mobile { display: flex !important; }
+  .settings-gear-desktop { display: none !important; }
+}
+
+/* ---- Image Drag Container & Move Handle ---- */
+.note-textarea .img-drag-container {
+  position: relative !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+  margin: 12px 0 !important;
+  vertical-align: top !important;
+  border-radius: var(--radius-sm);
+  transition: outline 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+  cursor: grab;
+}
+
+.note-textarea .img-drag-container img {
+  display: block !important;
+  max-width: 100% !important;
+  height: auto;
+  border-radius: var(--radius-sm);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.note-textarea .img-drag-container:hover,
+.note-textarea .img-drag-container.selected {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 3px !important;
+}
+
+.image-move-handle {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  height: 32px !important;
+  padding: 0 12px !important;
+  background: var(--bg-card, #23201b) !important;
+  border: 1.5px solid var(--accent, #e8b86d) !important;
+  border-radius: 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  cursor: grab !important;
+  z-index: 100 !important;
+  color: var(--text-primary, #fff) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-body, sans-serif) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+  opacity: 0.85;
+  pointer-events: auto !important;
+  transition: opacity 0.2s ease, transform 0.15s ease, background 0.15s ease !important;
+  user-select: none !important;
+}
+
+.image-move-handle .material-symbols-rounded {
+  font-size: 18px !important;
+  color: var(--accent, #e8b86d) !important;
+}
+
+.note-textarea .img-drag-container:hover .image-move-handle,
+.note-textarea .img-drag-container.selected .image-move-handle {
+  opacity: 1 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6) !important;
+}
+
+.image-move-handle:hover {
+  background: var(--bg-card-hover, #2c2923) !important;
+  transform: scale(1.05) !important;
+}
+
+.image-move-handle:active {
+  cursor: grabbing !important;
+}
+
+.note-textarea .img-drag-container.dragging {
+  opacity: 0.3 !important;
+}
+
+/* ---- Dynamic Placing Pointer & Drop Placeholder ---- */
+.drag-drop-indicator {
+  display: flex !important;
+  align-items: center !important;
+  margin: 8px 0 !important;
+  pointer-events: none !important;
+  z-index: 1000 !important;
+  animation: pulseDropLine 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseDropLine {
+  0%, 100% { opacity: 0.95; }
+  50% { opacity: 1; filter: drop-shadow(0 0 6px var(--accent)); }
+}
+
+.drag-drop-placeholder {
+  border: 2px dashed var(--accent) !important;
+  background: rgba(232, 184, 109, 0.08) !important;
+  margin: 8px 0 !important;
+  border-radius: 8px !important;
+  pointer-events: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--accent) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  gap: 8px !important;
+  box-sizing: border-box !important;
+  transition: height 0.1s ease !important;
+}
 
 

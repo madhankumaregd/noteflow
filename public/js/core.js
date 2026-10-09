@@ -274,7 +274,7 @@ async function createNote(template = 'blank', diaryName = '') {
   if (window.innerWidth <= 768) sidebar.classList.remove("open");
 }
 
-function openNote(id) {
+async function openNote(id) {
   activeNoteId = id;
   if (id) {
     localStorage.setItem('lastActiveNoteId', id);
@@ -286,6 +286,21 @@ function openNote(id) {
     toggleReadingMode();
   }
   
+  const note = notes.find((n) => n.id === id);
+  if (note && note.content === undefined) {
+    noteContent.innerHTML = "<p><i>Loading note...</i></p>";
+    try {
+      const res = await fetch(`/api/notes/${id}`, { headers: getAuthHeaders() });
+      if (res.ok) {
+        const fullNote = await res.json();
+        note.content = fullNote.content;
+        localStorage.setItem(DB_KEY, JSON.stringify(notes));
+      }
+    } catch (err) {
+      console.error("Failed to fetch full note content", err);
+    }
+  }
+
   render();
   if (window.innerWidth <= 768) sidebar.classList.remove("open");
 }
@@ -295,19 +310,57 @@ function autoSave() {
   if (!note) return;
   setSaveStatus("saving");
   note.title = noteTitleInput.value;
-  note.content = noteContent.innerHTML;
+  // Clean content before saving: strip image drag wrappers and handles
+  const tempDiv = document.createElement("div");
+  tempDiv.innerHTML = noteContent.innerHTML;
+  
+  // Clean any ghost elements, move handles, placeholders, or dragging classes
+  tempDiv.querySelectorAll(".drag-ghost-element, .table-move-handle, .image-move-handle, .table-overall-resize-handle, .table-col-resize-handle, .drag-drop-indicator, .drag-drop-placeholder").forEach(el => el.remove());
+
+  // Unwrap img-drag-containers: replace each with just the img inside
+  tempDiv.querySelectorAll(".img-drag-container").forEach(container => {
+    const img = container.querySelector("img");
+    if (img) {
+      img.style.display = "";
+      img.classList.remove("dragging");
+      container.parentNode.insertBefore(img, container);
+    }
+    container.remove();
+  });
+
+  // Make sure all standalone images are visible
+  tempDiv.querySelectorAll("img").forEach(img => {
+    img.style.display = "";
+    img.classList.remove("dragging");
+  });
+
+  // Also remove any remaining handles that leaked into HTML
+  tempDiv.querySelectorAll(".table-move-handle, .image-move-handle, .table-overall-resize-handle, .table-col-resize-handle").forEach(el => el.remove());
+
+  note.content = tempDiv.innerHTML;
   note.tags = parseTags(tagInput.value);
   note.updatedAt = Date.now();
+
+  // Synchronously persist to localStorage immediately so a refresh never loses changes
+  try {
+    localStorage.setItem(DB_KEY, JSON.stringify(notes));
+  } catch (err) {
+    console.warn("localStorage save error:", err);
+  }
 
   updateWordCount();
   
   const card = document.querySelector(`.note-card[data-id="${note.id}"]`);
   if (card) {
       const plainTextPreview = stripHtml(note.content);
-      card.querySelector('.note-card-title').textContent = note.title || "Untitled";
-      card.querySelector('.note-card-preview').textContent = plainTextPreview || "No content yet...";
-      card.querySelector('.note-card-date').textContent = formatDate(note.updatedAt);
-      card.querySelector('.note-card-tags').innerHTML = note.tags.map(t => `<span class="note-tag-badge">${escapeHtml(t)}</span>`).join("");
+      const titleEl = card.querySelector('.note-card-title');
+      if (titleEl) titleEl.textContent = note.title || "Untitled";
+      const prevEl = card.querySelector('.note-card-preview');
+      if (prevEl) prevEl.textContent = plainTextPreview || "No content yet...";
+      const dateEl = card.querySelector('.note-card-date');
+      if (dateEl) dateEl.textContent = formatDate(note.updatedAt);
+      const tagsEl = card.querySelector('.note-card-tags');
+      if (tagsEl) tagsEl.innerHTML = note.tags.map(t => `<span class="note-tag-badge">${escapeHtml(t)}</span>`).join("");
   }
   renderTagsFilter();
 
@@ -394,15 +447,20 @@ insertLinkBtn.addEventListener("click", (e) => {
 });
 
 cancelLink.addEventListener("click", () => linkModalOverlay.classList.remove("open"));
-confirmLink.addEventListener("click", () => {
+confirmLink.addEventListener("click", (e) => {
+  if (e) e.preventDefault();
   const url = linkUrlInput.value.trim();
   const text = linkTextInput.value.trim() || url;
   if (!url) return;
   
-  restoreSelection(savedSelection);
-  const html = `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ctrl+Click to open link" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">${text}</a>`;
-  execCmd("insertHTML", html);
   linkModalOverlay.classList.remove("open");
+  try {
+    restoreSelection(savedSelection);
+    const html = `<a href="${url}" target="_blank" rel="noopener noreferrer" title="Ctrl+Click to open link" style="color: #3b82f6; text-decoration: underline; cursor: pointer;">${text}</a>`;
+    execCmd("insertHTML", html);
+  } catch (err) {
+    console.error("Link insertion error:", err);
+  }
 });
 
 insertImageBtn.addEventListener("click", (e) => {
@@ -417,53 +475,100 @@ insertImageBtn.addEventListener("click", (e) => {
   setTimeout(() => imageUrlInput.focus(), 100);
 });
 
+function compressImageFile(file, maxWidth = 1200, quality = 0.8) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth || h > maxWidth) {
+          if (w > h) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          } else {
+            w = Math.round((w * maxWidth) / h);
+            h = maxWidth;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.onerror = () => resolve(e.target.result);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
 imageFileInput.addEventListener("change", async (e) => {
   const file = e.target.files[0];
   if (!file) return;
 
   imageUploadStatus.style.display = "block";
   imageUploadStatus.style.color = "var(--primary)";
-  imageUploadStatus.textContent = "Uploading to ImgBB... Please wait.";
-  
-  const formData = new FormData();
-  formData.append("image", file);
+  imageUploadStatus.textContent = "Processing image...";
 
   try {
-    const res = await fetch("https://api.imgbb.com/1/upload?key=dbbe3c2f752dff0d212ffe00c97d19cc", {
+    // Compress image client-side to ensure lightweight storage and fast syncing
+    const compressedDataUrl = await compressImageFile(file);
+    if (compressedDataUrl) {
+      imageUrlInput.value = compressedDataUrl;
+      imageUploadStatus.textContent = "Image ready! Click Insert to add.";
+      imageUploadStatus.style.color = "#10b981";
+    }
+
+    // Attempt ImgBB cloud upload in background
+    const formData = new FormData();
+    formData.append("image", file);
+    fetch("https://api.imgbb.com/1/upload?key=dbbe3c2f752dff0d212ffe00c97d19cc", {
       method: "POST",
       body: formData
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      imageUploadStatus.textContent = "Upload successful! Inserting...";
-      imageUploadStatus.style.color = "#10b981"; // Success green
-      
-      // Auto fill and confirm
-      imageUrlInput.value = data.data.url;
-      setTimeout(() => {
-        confirmImage.click();
-      }, 500);
-    } else {
-      throw new Error(data.error?.message || "Upload failed");
-    }
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.success && data.data && data.data.url) {
+          imageUrlInput.value = data.data.url;
+          imageUploadStatus.textContent = "Cloud upload ready! Click Insert to add.";
+          imageUploadStatus.style.color = "#10b981";
+        }
+      })
+      .catch(err => {
+        console.warn("ImgBB upload background warning, using compressed local copy:", err);
+      });
   } catch (error) {
-    imageUploadStatus.textContent = "Error: " + error.message;
+    console.error("Image processing error:", error);
+    imageUploadStatus.textContent = "Error loading image.";
     imageUploadStatus.style.color = "var(--danger)";
-    console.error("ImgBB upload error:", error);
   }
 });
 
 cancelImage.addEventListener("click", () => imageModalOverlay.classList.remove("open"));
-confirmImage.addEventListener("click", () => {
+confirmImage.addEventListener("click", (e) => {
+  if (e) e.preventDefault();
+  imageModalOverlay.classList.remove("open");
   const url = imageUrlInput.value.trim();
   const alt = imageAltInput.value.trim();
   if (!url) return;
   
-  restoreSelection(savedSelection);
-  const html = `<img src="${url}" alt="${alt}" /><p><br></p>`;
-  execCmd("insertHTML", html);
-  imageModalOverlay.classList.remove("open");
+  try {
+    restoreSelection(savedSelection);
+    const html = `<img src="${url}" alt="${escapeHtml(alt)}" style="max-width:100%; height:auto;" /><p><br></p>`;
+    execCmd("insertHTML", html);
+
+    if (typeof setupImageInteraction === "function") {
+      setupImageInteraction();
+    }
+    autoSave();
+  } catch (err) {
+    console.error("Image insertion error:", err);
+  }
 });
 
 [linkModalOverlay, imageModalOverlay].forEach(modal => {
@@ -646,8 +751,12 @@ window.openChecklistSettings = function(noteId) {
   checklistSettingsModalOverlay.classList.add("open");
 };
 
-checklistSettingsBtn.addEventListener("click", () => {
-  if (activeNoteId) window.Router.navigate(`/notes/settings`);
+[checklistSettingsBtnDesktop, checklistSettingsBtnMobile].forEach(btn => {
+  if (btn) {
+    btn.addEventListener("click", () => {
+      if (activeNoteId) window.Router.navigate(`/notes/settings`);
+    });
+  }
 });
 
 function updateChecklistSettingsUI() {
@@ -865,7 +974,10 @@ modalOverlay.addEventListener("click", (e) => {
   if (e.target === modalOverlay) modalOverlay.classList.remove("open");
 });
 
-mobileToggle.addEventListener("click", () => sidebar.classList.toggle("open"));
+mobileToggle.addEventListener("click", () => {
+  if (document.activeElement) document.activeElement.blur();
+  sidebar.classList.toggle("open");
+});
 
 const closeSidebarOnOutsideInteraction = (e) => {
   if (window.innerWidth <= 768 && sidebar.classList.contains("open")) {
@@ -901,9 +1013,11 @@ document.addEventListener('touchend', e => {
   // Ensure it's mostly horizontal swipe (diff X > diff Y)
   if (Math.abs(touchendX - touchstartX) > Math.abs(touchendY - touchstartY)) {
     if (touchendX < touchstartX - 40) { // Swiped left
+      if (document.activeElement) document.activeElement.blur();
       sidebar.classList.remove("open");
     }
     if (touchendX > touchstartX + 40) { // Swiped right
+      if (document.activeElement) document.activeElement.blur();
       sidebar.classList.add("open");
     }
   }

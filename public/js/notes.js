@@ -54,7 +54,7 @@ function renderNotesList() {
       .map((t) => `<span class="note-tag-badge">${t}</span>`)
       .join("");
 
-    const plainTextPreview = stripHtml(note.content);
+    const plainTextPreview = note.content !== undefined ? stripHtml(note.content) : (note.preview || "");
 
     card.innerHTML = `
       <div class="note-card-title">${escapeHtml(note.title) || "Untitled"}</div>
@@ -105,13 +105,22 @@ function renderEditor() {
     noteCreatedDate.textContent = "Created: " + formatDate(note.createdAt || note.updatedAt);
   }
 
-  noteContent.innerHTML = note.content;
+  if (note.content === undefined && note.preview !== undefined) {
+    noteContent.innerHTML = "<p><i>Loading note...</i></p>";
+    if (typeof openNote === 'function') openNote(note.id);
+    return;
+  }
+  const rawContent = note.content || "";
+  noteContent.innerHTML = typeof DOMPurify !== 'undefined' ? DOMPurify.sanitize(rawContent) : rawContent;
   updateWordCount();
   setSaveStatus("saved");
+  if (typeof setupTableInteraction === "function") setupTableInteraction();
+  if (typeof setupImageInteraction === "function") setupImageInteraction();
 }
 
 function escapeHtml(str) {
-  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  if (!str) return "";
+  return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function setSaveStatus(state) {

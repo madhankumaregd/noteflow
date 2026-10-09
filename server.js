@@ -6,9 +6,120 @@ const bcrypt = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const compression = require('compression');
 
-app.use(express.json({ limit: '10mb' }));
+app.set('trust proxy', true);
+app.use(compression());
+app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+/* =============================================
+   SECURITY: Rate Limiting & Anti-Abuse
+   ============================================= */
+
+// IP Registration Tracker: ip -> [timestamp, timestamp, ...]
+const ipRegTracker = new Map();
+// Banned IPs loaded from DB at startup
+const bannedIPs = new Set();
+// Login Brute-Force Tracker: "ip|username" -> { count, firstAttempt }
+const loginAttemptTracker = new Map();
+// Note Creation Daily Tracker: "userId|YYYY-MM-DD" -> count
+const noteCreationTracker = new Map();
+
+const REGISTRATION_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_REGISTRATIONS_PER_IP = 3;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const MAX_LOGIN_ATTEMPTS = 5;
+const MAX_NOTES_PER_DAY = 10;
+
+function getClientIP(req) {
+  return req.ip || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.connection?.remoteAddress || 'unknown';
+}
+
+function isIPBanned(ip) {
+  return bannedIPs.has(ip);
+}
+
+function trackRegistration(ip) {
+  const now = Date.now();
+  if (!ipRegTracker.has(ip)) ipRegTracker.set(ip, []);
+  const timestamps = ipRegTracker.get(ip).filter(t => now - t < REGISTRATION_WINDOW_MS);
+  timestamps.push(now);
+  ipRegTracker.set(ip, timestamps);
+  return timestamps.length;
+}
+
+async function banIP(ip) {
+  bannedIPs.add(ip);
+  if (turso) {
+    try {
+      await turso.execute({
+        sql: 'INSERT OR IGNORE INTO banned_ips (ip, reason, banned_at) VALUES (?, ?, ?)',
+        args: [ip, 'Exceeded registration limit (' + MAX_REGISTRATIONS_PER_IP + ' in 30 min)', Date.now()]
+      });
+    } catch (err) {
+      console.error('Error persisting IP ban:', err);
+    }
+  }
+  console.log('🚫 IP BANNED:', ip);
+}
+
+function checkLoginAttempt(ip, username) {
+  const key = `${ip}|${username}`;
+  const now = Date.now();
+  const record = loginAttemptTracker.get(key);
+  if (!record) return true; // allowed
+  if (now - record.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttemptTracker.delete(key);
+    return true;
+  }
+  return record.count < MAX_LOGIN_ATTEMPTS;
+}
+
+function recordFailedLogin(ip, username) {
+  const key = `${ip}|${username}`;
+  const now = Date.now();
+  const record = loginAttemptTracker.get(key);
+  if (!record || now - record.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttemptTracker.set(key, { count: 1, firstAttempt: now });
+  } else {
+    record.count++;
+  }
+}
+
+function clearFailedLogins(ip, username) {
+  loginAttemptTracker.delete(`${ip}|${username}`);
+}
+
+function checkNoteQuota(userId) {
+  const todayKey = `${userId}|${new Date().toISOString().slice(0, 10)}`;
+  const count = noteCreationTracker.get(todayKey) || 0;
+  return count < MAX_NOTES_PER_DAY;
+}
+
+function trackNoteCreation(userId, amount = 1) {
+  const todayKey = `${userId}|${new Date().toISOString().slice(0, 10)}`;
+  const count = noteCreationTracker.get(todayKey) || 0;
+  noteCreationTracker.set(todayKey, count + amount);
+}
+
+// Cleanup stale tracking data every 30 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, timestamps] of ipRegTracker) {
+    const fresh = timestamps.filter(t => now - t < REGISTRATION_WINDOW_MS);
+    if (fresh.length === 0) ipRegTracker.delete(ip);
+    else ipRegTracker.set(ip, fresh);
+  }
+  for (const [key, record] of loginAttemptTracker) {
+    if (now - record.firstAttempt > LOGIN_WINDOW_MS) loginAttemptTracker.delete(key);
+  }
+  // Clear yesterday's note creation entries
+  const today = new Date().toISOString().slice(0, 10);
+  for (const key of noteCreationTracker.keys()) {
+    if (!key.endsWith(today)) noteCreationTracker.delete(key);
+  }
+}, 30 * 60 * 1000);
 
 // Initialize Turso Client
 const dbUrl = process.env.TURSO_DATABASE_URL;
@@ -99,6 +210,7 @@ async function initDb() {
     }
 
     await turso.execute(`CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(userId);`);
+    await turso.execute(`CREATE INDEX IF NOT EXISTS idx_notes_user_active_updated ON notes(userId, deleted_at, updatedAt DESC);`);
 
     // Users table
     await turso.execute(`
@@ -172,6 +284,24 @@ async function initDb() {
       );
     `);
 
+    // Banned IPs table (Security Step 1)
+    await turso.execute(`
+      CREATE TABLE IF NOT EXISTS banned_ips (
+        ip TEXT PRIMARY KEY,
+        reason TEXT,
+        banned_at INTEGER
+      );
+    `);
+
+    // Load banned IPs into memory at startup
+    try {
+      const bans = await turso.execute('SELECT ip FROM banned_ips');
+      bans.rows.forEach(row => bannedIPs.add(row.ip));
+      if (bannedIPs.size > 0) console.log(`🚫 Loaded ${bannedIPs.size} banned IPs`);
+    } catch (e) {
+      // Table may not exist yet on first run
+    }
+
     // Set default admin credentials if none exist
     const existing = await turso.execute({
       sql: 'SELECT value FROM admin_config WHERE key = ?',
@@ -191,6 +321,7 @@ async function initDb() {
     }
 
     console.log('✅ All database tables verified');
+    console.log('🛡️ Security system initialized');
   } catch (err) {
     console.error('❌ Error initializing Turso tables:', err);
   }
@@ -236,11 +367,26 @@ function validatePassword(password) {
 }
 
 // Helper to extract userId from headers
+const userAuthCache = new Map(); // userId -> { status, deleted_at, expiry }
+
 async function getUserId(req, res) {
   const uid = req.headers['x-user-id'] || req.query.userId;
   if (!uid || uid === 'anon_default') {
     res.status(401).json({ error: 'Unauthorized: Missing User ID.' });
     return null;
+  }
+
+  const cached = userAuthCache.get(uid);
+  if (cached && cached.expiry > Date.now()) {
+    if (cached.deleted_at !== null) {
+      res.status(401).json({ error: 'User not found or deleted.' });
+      return null;
+    }
+    if (cached.status === 'deactivated') {
+      res.status(403).json({ error: 'Your account has been deactivated...Contact an administrator.', isDeactivated: true });
+      return null;
+    }
+    return uid;
   }
 
   if (turso) {
@@ -250,10 +396,15 @@ async function getUserId(req, res) {
         args: [uid]
       });
       if (result.rows.length === 0 || result.rows[0].deleted_at !== null) {
+        userAuthCache.set(uid, { deleted_at: Date.now(), expiry: Date.now() + 120000 });
         res.status(401).json({ error: 'User not found or deleted.' });
         return null;
       }
-      if (result.rows[0].status === 'deactivated') {
+      
+      const status = result.rows[0].status;
+      userAuthCache.set(uid, { status, deleted_at: null, expiry: Date.now() + 120000 });
+
+      if (status === 'deactivated') {
         res.status(403).json({ error: 'Your account has been deactivated...Contact an administrator.', isDeactivated: true });
         return null;
       }
@@ -272,6 +423,13 @@ async function getUserId(req, res) {
 // POST /api/auth/register — Create new account
 app.post('/api/auth/register', async (req, res) => {
   if (!turso) return res.status(500).json({ error: 'Database not connected' });
+  
+  // Security Step 1: IP Ban Check
+  const clientIP = getClientIP(req);
+  if (isIPBanned(clientIP)) {
+    return res.status(403).json({ error: 'Registration blocked: Suspicious activity detected from your network.' });
+  }
+  
   try {
     const { username, password, displayName } = req.body;
 
@@ -290,6 +448,13 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(409).json({ error: 'Username already taken' });
     }
 
+    // Security Step 1: Track registration rate from this IP
+    const regCount = trackRegistration(clientIP);
+    if (regCount > MAX_REGISTRATIONS_PER_IP) {
+      await banIP(clientIP);
+      return res.status(403).json({ error: 'Registration blocked: Too many accounts created from your network. You have been permanently restricted.' });
+    }
+
     const userId = 'usr_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     const hash = await bcrypt.hash(password, 10);
 
@@ -297,6 +462,8 @@ app.post('/api/auth/register', async (req, res) => {
       sql: 'INSERT INTO users (id, username, password_hash, display_name, theme, custom_accent, created_at, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       args: [userId, username.toLowerCase(), hash, displayName || username, 'dark', null, Date.now(), 'active']
     });
+
+    console.log(`✅ New user registered: ${username} from IP ${clientIP}`);
 
     res.json({
       success: true,
@@ -315,11 +482,19 @@ app.post('/api/auth/register', async (req, res) => {
 // POST /api/auth/login — Login with credentials
 app.post('/api/auth/login', async (req, res) => {
   if (!turso) return res.status(500).json({ error: 'Database not connected' });
+  
+  const clientIP = getClientIP(req);
+  
   try {
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    // Security Step 3: Brute-force protection
+    if (!checkLoginAttempt(clientIP, username.toLowerCase())) {
+      return res.status(429).json({ error: 'Too many failed login attempts. Please try again in 15 minutes.' });
     }
 
     const result = await turso.execute({
@@ -328,6 +503,7 @@ app.post('/api/auth/login', async (req, res) => {
     });
 
     if (result.rows.length === 0) {
+      recordFailedLogin(clientIP, username.toLowerCase());
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
@@ -340,8 +516,12 @@ app.post('/api/auth/login', async (req, res) => {
 
     const valid = await bcrypt.compare(password, user.password_hash);
     if (!valid) {
+      recordFailedLogin(clientIP, username.toLowerCase());
       return res.status(401).json({ error: 'Invalid username or password' });
     }
+
+    // Successful login: clear failed attempts
+    clearFailedLogins(clientIP, username.toLowerCase());
 
     res.json({
       success: true,
@@ -361,6 +541,13 @@ app.post('/api/auth/login', async (req, res) => {
 // POST /api/auth/claim — Existing anonymous user claims their notes
 app.post('/api/auth/claim', async (req, res) => {
   if (!turso) return res.status(500).json({ error: 'Database not connected' });
+  
+  // Security Step 1: IP Ban Check (same as register)
+  const clientIP = getClientIP(req);
+  if (isIPBanned(clientIP)) {
+    return res.status(403).json({ error: 'Registration blocked: Suspicious activity detected from your network.' });
+  }
+  
   try {
     const { oldUserId, username, password, displayName } = req.body;
 
@@ -371,6 +558,13 @@ app.post('/api/auth/claim', async (req, res) => {
 
     const passwordErr = validatePassword(password);
     if (passwordErr) return res.status(400).json({ error: passwordErr });
+
+    // Security Step 1: Track registration rate from this IP
+    const regCount = trackRegistration(clientIP);
+    if (regCount > MAX_REGISTRATIONS_PER_IP) {
+      await banIP(clientIP);
+      return res.status(403).json({ error: 'Registration blocked: Too many accounts created from your network. You have been permanently restricted.' });
+    }
 
     // Check if username already taken
     const existing = await turso.execute({
@@ -440,6 +634,8 @@ app.put('/api/auth/password', async (req, res) => {
       sql: 'UPDATE users SET password_hash = ? WHERE id = ?',
       args: [newHash, userId]
     });
+    
+    userAuthCache.delete(userId);
 
     res.json({ success: true });
   } catch (err) {
@@ -492,6 +688,8 @@ app.put('/api/profile', async (req, res) => {
       sql: 'UPDATE users SET display_name = ?, theme = ?, custom_accent = ? WHERE id = ?',
       args: [displayName || null, theme || 'dark', customAccent || null, userId]
     });
+    
+    userAuthCache.delete(userId);
 
     res.json({ success: true });
   } catch (err) {
@@ -511,14 +709,33 @@ app.get('/api/notes', async (req, res) => {
   const userId = await getUserId(req, res);
   if (!userId) return;
   try {
-    const result = await turso.execute({
-      sql: 'SELECT * FROM notes WHERE userId = ? AND deleted_at IS NULL ORDER BY updatedAt DESC',
+    // ETag Validation
+    const maxResult = await turso.execute({
+      sql: 'SELECT MAX(updatedAt) as maxUpdated FROM notes WHERE userId = ? AND deleted_at IS NULL',
       args: [userId]
     });
+    
+    let maxUpdated = 0;
+    if (maxResult.rows.length > 0 && maxResult.rows[0].maxUpdated) {
+      maxUpdated = Number(maxResult.rows[0].maxUpdated);
+    }
+    
+    const etag = `"${maxUpdated}"`;
+    res.setHeader('Cache-Control', 'no-cache');
+    if (req.headers['if-none-match'] === etag) {
+      return res.status(304).end();
+    }
+    res.setHeader('ETag', etag);
+
+    const result = await turso.execute({
+      sql: 'SELECT id, title, tags, settings, createdAt, updatedAt, SUBSTR(content, 1, 200) AS preview FROM notes WHERE userId = ? AND deleted_at IS NULL ORDER BY updatedAt DESC',
+      args: [userId]
+    });
+    
     const notes = result.rows.map(row => ({
       id: row.id,
       title: row.title || '',
-      content: row.content || '',
+      preview: row.preview || '',
       tags: row.tags ? JSON.parse(row.tags) : [],
       settings: row.settings ? JSON.parse(row.settings) : {},
       createdAt: Number(row.createdAt),
@@ -531,16 +748,71 @@ app.get('/api/notes', async (req, res) => {
   }
 });
 
+// GET single note with full content
+app.get('/api/notes/:id', async (req, res) => {
+  if (!turso) return res.status(500).json({ error: 'Database not connected' });
+  const userId = await getUserId(req, res);
+  if (!userId) return;
+  try {
+    const { id } = req.params;
+    const result = await turso.execute({
+      sql: 'SELECT * FROM notes WHERE id = ? AND userId = ? AND deleted_at IS NULL',
+      args: [id, userId]
+    });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Note not found' });
+    
+    const row = result.rows[0];
+    res.json({
+      id: row.id,
+      title: row.title || '',
+      content: row.content || '',
+      tags: row.tags ? JSON.parse(row.tags) : [],
+      settings: row.settings ? JSON.parse(row.settings) : {},
+      createdAt: Number(row.createdAt),
+      updatedAt: Number(row.updatedAt)
+    });
+  } catch (err) {
+    console.error('Error fetching note:', err);
+    res.status(500).json({ error: 'Failed to fetch note' });
+  }
+});
+
 // POST / Save note or bulk sync for current user ONLY
 app.post('/api/notes', async (req, res) => {
   if (!turso) return res.status(500).json({ error: 'Database not connected' });
   const userId = await getUserId(req, res);
   if (!userId) return;
+  
+  // Security Step 5: Payload size check (500KB max per note)
+  const payloadSize = JSON.stringify(req.body).length;
+  if (payloadSize > 500 * 1024) {
+    return res.status(413).json({ error: 'Note too large. Maximum size is 500KB.' });
+  }
+  
   try {
     const payload = req.body;
 
+    // Security Step 2: Check if this is a NEW note creation (not an update)
+    // For INSERT OR REPLACE, check if the note already exists
+    const isNewNote = async (noteId) => {
+      const check = await turso.execute({
+        sql: 'SELECT id FROM notes WHERE id = ? AND userId = ?',
+        args: [noteId, userId]
+      });
+      return check.rows.length === 0;
+    };
+
     // Bulk migration array support
     if (Array.isArray(payload)) {
+      // Count how many are truly new
+      let newCount = 0;
+      for (const note of payload) {
+        if (await isNewNote(note.id)) newCount++;
+      }
+      if (newCount > 0 && !checkNoteQuota(userId)) {
+        return res.status(429).json({ error: 'Daily limit reached: You can only create ' + MAX_NOTES_PER_DAY + ' notes per day. Please try again tomorrow.' });
+      }
+      
       for (const note of payload) {
         await turso.execute({
           sql: `INSERT OR REPLACE INTO notes (id, userId, title, content, tags, settings, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -556,11 +828,19 @@ app.post('/api/notes', async (req, res) => {
           ]
         });
       }
+      if (newCount > 0) trackNoteCreation(userId, newCount);
       return res.json({ success: true, count: payload.length });
     }
 
     // Single note insert/replace
     const note = payload;
+    const isNew = await isNewNote(note.id);
+    
+    // Security Step 2: Daily note creation quota
+    if (isNew && !checkNoteQuota(userId)) {
+      return res.status(429).json({ error: 'Daily limit reached: You can only create ' + MAX_NOTES_PER_DAY + ' notes per day. Please try again tomorrow.' });
+    }
+    
     await turso.execute({
       sql: `INSERT OR REPLACE INTO notes (id, userId, title, content, tags, settings, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       args: [
@@ -574,6 +854,7 @@ app.post('/api/notes', async (req, res) => {
         note.updatedAt || Date.now()
       ]
     });
+    if (isNew) trackNoteCreation(userId);
     res.json({ success: true, note });
   } catch (err) {
     console.error('Error saving note:', err);

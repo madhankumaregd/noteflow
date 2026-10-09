@@ -36,8 +36,7 @@ async function initApp() {
     }
     
     // Then fetch fresh profile from server (updates silently)
-    await loadProfile();
-    await loadNotes();
+    await Promise.all([loadProfile(), loadNotes()]);
     applyTheme(currentProfile?.theme, currentProfile?.customAccent);
   } else if (oldUserId) {
     console.log('[NoteFlow] No session but oldUserId found, showing claim overlay');

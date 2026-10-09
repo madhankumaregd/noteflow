@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content" />
     <title>Noteflow — Your Ideas, Organized</title>
     <meta name="description" content="Noteflow is a beautiful, distraction-free note-taking app with rich formatting, tagging, search, and themes — all stored securely in the cloud." />
-    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/style.css?v=1.2" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&family=Merriweather:wght@400;700&family=Lora:wght@400;500;700&family=Source+Serif+4:wght@400;600&display=swap"
@@ -472,6 +472,9 @@
                 class="title-input"
                 placeholder="Note title..."
               />
+              <button class="btn-tool settings-gear-mobile" id="checklistSettingsBtnMobile" title="Note Settings" style="flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: transparent; border: none;">
+                <span class="material-symbols-rounded">settings</span>
+              </button>
             </div>
             <div class="tag-input-row">
               <span class="tag-label">Tags:</span>
@@ -510,7 +513,7 @@
               <span class="material-symbols-rounded">cloud_done</span> <span class="btn-text">Saved</span>
             </span>
             <span class="word-count" id="wordCount" title="Word count">0 words</span>
-            <button class="btn-tool" id="checklistSettingsBtn" title="Note Settings">
+            <button class="btn-tool settings-gear-desktop" id="checklistSettingsBtnDesktop" title="Note Settings">
               <span class="material-symbols-rounded">settings</span>
             </button>
           </div>
@@ -1045,19 +1048,21 @@
       </div>
     </div>
 
-    <script src="/js/globals.js"></script>
-    <script src="/js/utils.js"></script>
-    <script src="/js/api.js"></script>
-    <script src="/js/auth.js"></script>
-    <script src="/js/notes.js"></script>
-    <script src="/js/editor.js"></script>
-    <script src="/js/table.js"></script>
-    <script src="/js/reading.js"></script>
-    <script src="/js/sketch.js"></script>
-    <script src="/js/export.js"></script>
-    <script src="/js/i18n.js"></script>
-    <script src="/js/core.js"></script>
-    <script type="module" src="/js/router.js"></script>
+    <!-- DOMPurify: XSS Sanitization (Security Step 4) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js" integrity="sha512-jB0TkTBeQC9ZSkBqDhdmfTv1qdfbWpGE72yJ/01Srq6hEzZIz2xkz1e1bC4U/ulkwPR3sDYE/RqxMp2byRGmg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="/js/globals.js?v=1.2"></script>
+    <script src="/js/utils.js?v=1.2"></script>
+    <script src="/js/api.js?v=1.2"></script>
+    <script src="/js/auth.js?v=1.2"></script>
+    <script src="/js/notes.js?v=1.2"></script>
+    <script src="/js/editor.js?v=1.2"></script>
+    <script src="/js/table.js?v=1.2"></script>
+    <script src="/js/reading.js?v=1.2"></script>
+    <script src="/js/sketch.js?v=1.2"></script>
+    <script src="/js/export.js?v=1.2"></script>
+    <script src="/js/i18n.js?v=1.2"></script>
+    <script src="/js/core.js?v=1.3"></script>
+    <script type="module" src="/js/router.js?v=1.2"></script>
   </body>
 </html>
 

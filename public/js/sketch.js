@@ -229,6 +229,7 @@ sketchDoneBtn.addEventListener('click', () => {
   }
   
   editingImageNode = null;
+  if (typeof setupImageInteraction === "function") setupImageInteraction();
   autoSave();
   
   if (activeNoteId) window.Router.navigate(`/notes`);
@@ -680,9 +681,7 @@ noteContent.addEventListener('mousemove', (e) => {
 
     let cursor = 'default';
     
-    if (x < threshold && y < threshold) {
-      cursor = 'nwse-resize';
-    } else if (w - x < threshold && y < threshold) {
+    if (w - x < threshold && y < threshold) {
       cursor = 'nesw-resize';
     } else if (w - x < threshold && h - y < threshold) {
       cursor = 'nwse-resize';
@@ -695,6 +694,7 @@ noteContent.addEventListener('mousemove', (e) => {
 });
 
 noteContent.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.image-move-handle') || e.target.closest('.table-move-handle')) return;
   if (e.target.tagName === 'IMG') {
     const rect = e.target.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -704,8 +704,7 @@ noteContent.addEventListener('mousedown', (e) => {
     const threshold = 20;
 
     let dir = '';
-    if (x < threshold && y < threshold) dir = 'tl';
-    else if (w - x < threshold && y < threshold) dir = 'tr';
+    if (w - x < threshold && y < threshold) dir = 'tr';
     else if (w - x < threshold && h - y < threshold) dir = 'br';
     else if (x < threshold && h - y < threshold) dir = 'bl';
 
@@ -749,6 +748,7 @@ document.addEventListener('mouseup', () => {
 
 // Mobile touch support for image resizing
 noteContent.addEventListener('touchstart', (e) => {
+  if (e.target.closest('.image-move-handle') || e.target.closest('.table-move-handle')) return;
   if (e.target.tagName === 'IMG' && e.touches.length === 1) {
     const rect = e.target.getBoundingClientRect();
     const touch = e.touches[0];
@@ -759,8 +759,7 @@ noteContent.addEventListener('touchstart', (e) => {
     const threshold = 40; // Larger threshold for touch
 
     let dir = '';
-    if (x < threshold && y < threshold) dir = 'tl';
-    else if (w - x < threshold && y < threshold) dir = 'tr';
+    if (w - x < threshold && y < threshold) dir = 'tr';
     else if (w - x < threshold && h - y < threshold) dir = 'br';
     else if (x < threshold && h - y < threshold) dir = 'bl';
 
